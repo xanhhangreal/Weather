@@ -298,6 +298,65 @@
 
         </LinearLayout>
 
+        <!-- Nút mở/tắt các tính năng phụ -->
+        <Button
+            android:id="@+id/btnToggleFeatures"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:text="☰"
+            android:textSize="20sp"
+            android:backgroundTint="@color/white"
+            android:textColor="@color/black"
+            android:padding="6dp" />
+
+        <!-- Nhóm tính năng phụ (ẩn/hiện) -->
+        <LinearLayout
+            android:id="@+id/layoutFeatures"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/btnToggleFeatures"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="12dp"
+            android:orientation="vertical"
+            android:background="@drawable/feature_box_bg"
+            android:padding="10dp"
+            android:visibility="gone"
+            android:elevation="6dp">
+
+            <Spinner
+                android:id="@+id/spinnerPlaceType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:entries="@array/place_types"
+                android:layout_marginBottom="10dp" />
+
+            <Button
+                android:id="@+id/btnSuggestPlaces"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Gợi ý địa điểm"
+                android:drawableStart="@android:drawable/ic_menu_gallery"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnWeatherMap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bản đồ thời tiết"
+                android:drawableStart="@android:drawable/ic_dialog_map"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnShareWeather"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chia sẻ thời tiết"
+                android:drawableStart="@android:drawable/ic_menu_share" />
+        </LinearLayout>
+
     </RelativeLayout>
 
 </RelativeLayout>

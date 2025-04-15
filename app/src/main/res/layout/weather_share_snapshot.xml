@@ -1,0 +1,48 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/snapshot_root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@android:color/black">
+
+    <!-- Ảnh nền toàn phần -->
+    <ImageView
+        android:id="@+id/snapshot_background"
+        android:layout_width="300dp"
+        android:layout_height="400dp"
+        android:scaleType="centerCrop" />
+
+    <!-- Nội dung nằm trên nền -->
+    <LinearLayout
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="24dp">
+
+        <ImageView
+            android:id="@+id/snapshot_icon"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/snapshot_city"
+            android:text="Thành phố"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:layout_marginBottom="8dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/snapshot_temp"
+            android:text="--°C – Trạng thái"
+            android:textSize="18sp"
+            android:textColor="#EEEEEE"
+            android:gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+</FrameLayout>

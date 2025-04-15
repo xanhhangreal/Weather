@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Google Map fragment -->
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Nút quay lại -->
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="16dp"
+        android:background="@android:color/black"
+        android:src="@android:drawable/ic_menu_revert"
+        android:contentDescription="Back"
+        android:layout_gravity="top|start"
+        app:tint="@android:color/white" />
+
+    <!-- Spinner chọn lớp thời tiết -->
+    <Spinner
+        android:id="@+id/spinnerLayer"
+        android:layout_width="100dp"
+        android:layout_height="50dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:backgroundTint="@color/black"
+        android:popupBackground="@color/black" />
+</FrameLayout>

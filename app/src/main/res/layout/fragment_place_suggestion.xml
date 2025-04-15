@@ -1,0 +1,37 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="#F0F0F0"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Nút đóng -->
+    <Button
+        android:id="@+id/btnCloseFragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Đóng"
+        android:layout_gravity="end"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Danh sách -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvSuggestions"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="12dp" />
+
+    <!-- Thông báo rỗng -->
+    <TextView
+        android:id="@+id/textNoResults"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Không có địa điểm phù hợp"
+        android:gravity="center"
+        android:textColor="#888888"
+        android:textSize="16sp"
+        android:visibility="gone"
+        android:paddingTop="16dp" />
+</LinearLayout>

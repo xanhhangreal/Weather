@@ -1,24 +1,38 @@
 package ie.weather;
 
+import android.app.AlarmManager;
+import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.volley.Request;
@@ -28,17 +42,27 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.android.volley.RequestQueue;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.material.textfield.TextInputEditText;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements LocationListener {
 
@@ -59,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     private LocationManager locationManager;
     private Location location;
     String apiKey = "485ec85551ded720ef8f68eccf7f96e0";
+    String apiKeyGoogle = "AIzaSyD-i0ZFOUsYRlsalHGg8YX2qUBhcicFzF4";
     String[] saveKey = {
             "CurrentWeatherData",
             "ForecastWeatherData",
@@ -69,6 +94,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             "Sydney",
             "Melbourne"
     };
+    Spinner spinner;
+    Button btnSuggest;
+    FusedLocationProviderClient fusedLocationProviderClient;
+    double currentLat, currentLon;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -88,7 +118,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         editCityName = findViewById(R.id.editCityName);
         textWindSpeed = findViewById(R.id.textWindSpeed);
         textLastTime = findViewById(R.id.textLastTime);
-
+        Button btnShare = findViewById(R.id.btnShareWeather);
+        btnShare.setOnClickListener(view -> shareWeatherInfo());
+        Button btnMap = findViewById(R.id.btnWeatherMap);
+        btnMap.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, WeatherMapActivity.class);
+            startActivity(intent);
+        });
         arr = new ArrayList<>();
         favArr = new ArrayList<>();
 
@@ -100,7 +136,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         } else {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33+
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
 
+                ActivityCompat.requestPermissions(
+                        this,
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                        101
+                );
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                startActivity(intent);
+            }
+        }
         location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         if (location != null) {
             Toast.makeText(this,"Fetching Last known location",Toast.LENGTH_SHORT).show(); // visit cuối cùng
@@ -157,8 +210,178 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 }
             }
         });
-    }
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
+        spinner = findViewById(R.id.spinnerPlaceType);
+        btnSuggest = findViewById(R.id.btnSuggestPlaces);
+
+        btnSuggest.setOnClickListener(v -> {
+//            String placeType = spinner.getSelectedItem().toString();
+//            getLastLocationAndSuggest(placeType);
+            ArrayList<SuggestedPlace> mockPlaces = new ArrayList<>();
+            mockPlaces.add(new SuggestedPlace("Highlands Coffee Nguyễn Trãi", 29.5, "Clear", "https://openweathermap.org/img/wn/01d@2x.png"));
+            mockPlaces.add(new SuggestedPlace("The Coffee House Vincom", 31.0, "Clouds", "https://openweathermap.org/img/wn/03d@2x.png"));
+            mockPlaces.add(new SuggestedPlace("Starbucks Keangnam", 28.2, "Sunny", "https://openweathermap.org/img/wn/01d@2x.png"));
+            mockPlaces.add(new SuggestedPlace("Aha Cafe Trung Kính", 27.4, "Partly Cloudy", "https://openweathermap.org/img/wn/02d@2x.png"));
+            mockPlaces.add(new SuggestedPlace("Trill Rooftop Cafe", 30.1, "Few Clouds", "https://openweathermap.org/img/wn/02d@2x.png"));
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(android.R.id.content, PlaceSuggestionFragment.newInstance(mockPlaces))
+                    .addToBackStack(null)
+                    .commit();
+        });
+        Button btnToggle = findViewById(R.id.btnToggleFeatures);
+        LinearLayout layoutFeatures = findViewById(R.id.layoutFeatures);
+
+        btnToggle.setOnClickListener(v -> {
+            if (layoutFeatures.getVisibility() == View.VISIBLE) {
+                layoutFeatures.setVisibility(View.GONE);
+            } else {
+                layoutFeatures.setVisibility(View.VISIBLE);
+            }
+        });
+
+    }
+    private void getLastLocationAndSuggest(String type) {
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 100);
+            return;
+        }
+        fusedLocationProviderClient.getLastLocation().addOnSuccessListener(location -> {
+            if (location != null) {
+                PlaceSuggester suggester = new PlaceSuggester(
+                        MainActivity.this,
+                        apiKeyGoogle,
+                        apiKey
+                );
+                String selectedType = spinner.getSelectedItem().toString();
+                suggester.suggestNearby(location, selectedType);
+            }
+        });
+    }
+    private void scheduleDailyReminder() {
+        // Thông báo vào lúc 7h sáng.
+//        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+//        Intent intent = new Intent(this, WeatherReminderReceiver.class);
+//        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+//
+//        // Hẹn lúc 7h sáng ngày kế tiếp
+//        Calendar calendar = Calendar.getInstance();
+//        calendar.set(Calendar.HOUR_OF_DAY, 7);
+//        calendar.set(Calendar.MINUTE, 0);
+//        calendar.set(Calendar.SECOND, 0);
+//
+//        // Nếu giờ đã qua thì hẹn cho ngày hôm sau
+//        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
+//            calendar.add(Calendar.DAY_OF_YEAR, 1);
+//        }
+//
+//        long triggerTime = calendar.getTimeInMillis();
+//
+//        // Android 12+ cần kiểm tra quyền trước
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//            if (!alarmManager.canScheduleExactAlarms()) {
+//                Log.d("Alarm", "Chưa có quyền SCHEDULE_EXACT_ALARM");
+//                return;
+//            }
+//        }
+//
+//        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+//        Log.d("Alarm", "Alarm đã đặt lúc: " + new Date(triggerTime));
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, WeatherReminderReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+
+        long triggerTime = System.currentTimeMillis() + 10 * 1000; // sau 10s
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Intent i = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                startActivity(i);
+                return;
+            }
+        }
+
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+        Log.d("Reminder", "🚀 Đặt lần đầu sau 10s tại " + new Date(triggerTime));
+    }
+    private void shareWeatherInfo() {
+        Bitmap bmp = createWeatherSnapshot();
+        shareBitmap(bmp);
+    }
+    private String getRandomQuote() {
+        String[] quotes = {
+                "🌞 Trời đẹp thế này, ai rủ đi chơi không?",
+                "☁️ Thời tiết thế này chỉ muốn ở nhà ôm gối xem phim 🍿",
+                "🌧️ Mưa thì mưa, mình vẫn chill như thường 😎",
+                "❄️ Gió lạnh đầu mùa, nhớ mặc ấm nha bạn!",
+                "🔥 Nóng thế này có ai bán kem không?"
+        };
+        int randomIndex = new Random().nextInt(quotes.length);
+        return quotes[randomIndex];
+    }
+    private void shareBitmap(Bitmap bitmap) {
+        try {
+            File cachePath = new File(getCacheDir(), "images");
+            cachePath.mkdirs();
+            File file = new File(cachePath, "weather_snapshot.png");
+
+            FileOutputStream stream = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            stream.close();
+
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
+
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("image/png");
+            String content = getRandomQuote();
+            shareIntent.putExtra(Intent.EXTRA_TEXT, content);
+            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(shareIntent, "Chia sẻ thời tiết"));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private Bitmap createWeatherSnapshot() {
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View view = inflater.inflate(R.layout.weather_share_snapshot, null);
+
+        ImageView bgView = view.findViewById(R.id.snapshot_background);
+        ImageView iconView = view.findViewById(R.id.snapshot_icon);
+        TextView cityView = view.findViewById(R.id.snapshot_city);
+        TextView tempView = view.findViewById(R.id.snapshot_temp);
+
+        SharedPreferences sharedPreferences = getSharedPreferences("weather_prefs", MODE_PRIVATE);
+        String city = sharedPreferences.getString("city", "City");
+        String temp = sharedPreferences.getString("temp", "--°C");
+        String condition = textConditions.getText().toString();
+        String iconName = sharedPreferences.getString("icon_name", "ic_weather_clear");
+
+        cityView.setText(city);
+        tempView.setText(temp + " – " + condition);
+        int iconResId = getResources().getIdentifier(iconName, "drawable", getPackageName());
+        iconView.setImageResource(iconResId);
+
+
+        Calendar now = Calendar.getInstance();
+        int hour = now.get(Calendar.HOUR_OF_DAY);
+        boolean isNight = (hour < 6 || hour >= 18);
+
+        int bgResId = isNight ? R.drawable.night_image : R.drawable.day_image;
+        bgView.setImageResource(bgResId);
+
+        // Tạo ảnh bitmap từ view
+        view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+
+        Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        view.draw(canvas);
+
+        return bitmap;
+    }
     private void updateWeather(String city) {
         String url = "https://api.openweathermap.org/data/2.5/weather?q="
                 +city
@@ -270,6 +493,23 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             double wSpeed = response.getJSONObject("wind")
                     .getDouble("speed");
             textWindSpeed.setText(""+wSpeed+"Km/h");
+
+            SharedPreferences sharedPreferences = getSharedPreferences("weather_prefs", MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString("temp", temperature + "°C");
+            editor.putString("city", city);
+            editor.putString("icon", img);
+            editor.apply();
+            SharedPreferences prefs = getSharedPreferences("weather_prefs", MODE_PRIVATE);
+            boolean isScheduled = prefs.getBoolean("reminder_scheduled", false);
+            Log.e("Remind: ","isScheduled");
+            if (!isScheduled) {
+
+                scheduleDailyReminder();
+                prefs.edit().putBoolean("reminder_scheduled", true).apply();
+            }
+
+
         }catch (Exception e){
             Log.d("Update Res",e.getMessage());
         }

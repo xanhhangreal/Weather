@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:background="@drawable/widget_background"
+    android:padding="16dp"
+    android:gravity="center_vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <!-- Biểu tượng thời tiết -->
+    <ImageView
+        android:id="@+id/widget_icon"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginEnd="16dp"
+        android:contentDescription="weather icon" />
+
+    <!-- Nhiệt độ và tên thành phố -->
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <!-- Nhiệt độ -->
+        <TextView
+            android:id="@+id/widget_temp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--°C"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:textColor="#212121" />
+
+        <!-- Thành phố -->
+        <TextView
+            android:id="@+id/widget_city"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Thành phố"
+            android:textSize="16sp"
+            android:textStyle="normal"
+            android:textColor="#424242" />
+    </LinearLayout>
+</LinearLayout>
