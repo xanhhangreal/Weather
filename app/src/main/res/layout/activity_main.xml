@@ -22,9 +22,10 @@
 
         <ImageView
             android:id="@+id/imgBG"
-            android:layout_alignParentTop="true"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_marginTop="-2dp"
             android:scaleType="centerCrop"
             android:src="@color/black_shade" />
 
@@ -288,11 +289,12 @@
                 android:layout_gravity="end"
                 android:layout_margin="10dp"
                 android:layout_weight="2"
+                android:background="#40FFFFFF"
                 android:orientation="horizontal"
                 android:padding="5dp"
                 android:visibility="visible"
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                android:background="#40FFFFFF"/>
+                tools:ignore="SpeakableTextPresentCheck" />
 
         </LinearLayout>
 

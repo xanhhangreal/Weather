@@ -107,7 +107,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             lat = location.getLatitude();
             lon = location.getLongitude();
         }
-        getCurrentWeather(lat, lon); 
+        getCurrentWeather(lat, lon);
         getForecastWeather(lat, lon);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
 
@@ -328,9 +328,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 arr.add(new WeatherModel(temp, condition, wSpeed,time,pod));
                 if(i==0){
                     if(pod.equals("n")){
-                        imgBG.setImageResource(R.drawable.night);
+                        imgBG.setImageResource(R.drawable.night_image);
                     }else {
-                        imgBG.setImageResource(R.drawable.day);
+                        imgBG.setImageResource(R.drawable.day_image);
                     }
                 }
             }
