@@ -1,8 +1,9 @@
 <resources>
     <string name="app_name">Weather</string>
     <string-array name="place_types">
-        <item>cafe</item>
-        <item>park</item>
-        <item>tourist_attraction</item>
+        <item>☕ Cafe</item>
+        <item>🌳 Park</item>
+        <item>🍽️ Restaurant</item>
+        <item>🏛 Tourist Spot</item>
     </string-array>
 </resources>

@@ -17,19 +17,25 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_margin="16dp"
-        android:background="@android:color/black"
-        android:src="@android:drawable/ic_menu_revert"
-        android:contentDescription="Back"
         android:layout_gravity="top|start"
-        app:tint="@android:color/white" />
+        android:src="@drawable/ic_back"
+        android:contentDescription="Back"
+        android:background="@android:color/transparent"
+        android:scaleType="fitXY"
+        android:adjustViewBounds="false"
+        android:padding="0dp" />
 
     <!-- Spinner chọn lớp thời tiết -->
     <Spinner
         android:id="@+id/spinnerLayer"
-        android:layout_width="100dp"
-        android:layout_height="50dp"
+        android:layout_width="140dp"
+        android:layout_height="wrap_content"
         android:layout_gravity="top|end"
-        android:layout_margin="16dp"
-        android:backgroundTint="@color/black"
-        android:popupBackground="@color/black" />
+        android:layout_marginTop="72dp"
+        android:layout_marginEnd="5dp"
+        android:background="@drawable/spinner_background"
+        android:gravity="center"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="4dp"
+        android:popupBackground="@android:color/white" />
 </FrameLayout>

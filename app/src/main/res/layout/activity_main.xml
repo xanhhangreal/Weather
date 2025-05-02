@@ -37,19 +37,21 @@
             android:gravity="center"
             android:text="City Name"
             android:textAlignment="center"
-            android:textColor="@color/white"
-            android:textSize="35sp"
+            android:textColor="@color/color_text_primary"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
             android:layout_marginStart="50dp"/>
+
 
         <ImageView
             android:id="@+id/imgRefresh"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_toEndOf="@+id/textCityName"
+            android:layout_marginStart="5dp"
+            android:layout_marginTop="40dp"
             android:src="@drawable/baseline_refresh_24"
-            android:layout_marginTop="35dp"
-            android:layout_marginStart="80dp"/>
-
+            app:tint="@color/color_text_primary"/>
 
         <LinearLayout
             android:id="@+id/llEdit"
@@ -68,19 +70,24 @@
                 android:background="@android:color/transparent"
                 android:hint="Enter City Name"
                 android:padding="5dp"
-                android:textColorHint="@color/white"
-                android:textSize="20sp">
+                android:textColorHint="@color/color_text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editCityName"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="@android:color/transparent"
-                    android:importantForAutofill="no"
                     android:inputType="text"
-                    android:singleLine="true"
-                    android:textColor="@color/white"
-                    android:textSize="14sp" />
+                    android:textColor="@color/color_text_primary"
+                    android:textColorHint="@color/color_text_primary"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif"
+                    android:importantForAutofill="no"
+                    android:singleLine="true"/>
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -93,7 +100,7 @@
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
                 android:src="@drawable/baseline_search_24"
-                app:tint="@color/white" />
+                app:tint="@color/color_text_primary" />
 
         </LinearLayout>
 
@@ -109,8 +116,10 @@
             android:gravity="center_horizontal"
             android:padding="2dp"
             android:text="24"
-            android:textColor="@color/white"
-            android:textSize="65sp" />
+            android:textStyle="bold"
+            android:textColor="@color/color_text_primary"
+            android:textSize="64sp"
+            android:fontFamily="sans-serif-medium" />
 
         <ImageView
             android:id="@+id/imgWeather"
@@ -130,15 +139,17 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/imgWeather"
             android:layout_margin="5dp"
-            android:layout_marginStart="10dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="5dp"
+            android:layout_marginBottom="5dp"
+            android:fontFamily="sans-serif"
             android:gravity="center"
             android:text="Conditions"
-            android:textSize="20sp"
             android:textAlignment="center"
-            android:textColor="@color/white" />
+            android:textColor="@color/color_text_primary"
+            android:textSize="40sp"
+            android:textStyle="bold" />
 
         <LinearLayout
             android:id="@+id/llWind"
@@ -158,8 +169,10 @@
                 android:gravity="end"
                 android:padding="5dp"
                 android:text="Wind Speed: "
-                android:textColor="@color/white"
-                android:textSize="20sp" />
+                android:textStyle="bold"
+                android:textColor="@color/color_text_primary"
+                android:textSize="23sp"
+                android:fontFamily="sans-serif" /> />
 
             <TextView
                 android:id="@+id/textWindSpeed"
@@ -171,8 +184,10 @@
                 android:gravity="start"
                 android:padding="5dp"
                 android:text="0.0Km/h"
-                android:textColor="@color/white"
-                android:textSize="20sp" />
+                android:textStyle="bold"
+                android:textColor="@color/color_text_primary"
+                android:textSize="23sp"
+                android:fontFamily="sans-serif" />
 
         </LinearLayout>
 
@@ -194,8 +209,10 @@
                 android:gravity="end"
                 android:padding="5dp"
                 android:text="Last Update: "
-                android:textColor="@color/white"
-                android:textSize="20sp" />
+                android:textStyle="bold"
+                android:textColor="@color/color_text_primary"
+                android:textSize="23sp"
+                android:fontFamily="sans-serif" />
 
             <TextView
                 android:id="@+id/textLastTime"
@@ -207,8 +224,10 @@
                 android:gravity="start"
                 android:padding="5dp"
                 android:text="YYYY-MM-DD\nHH:MM:SS"
-                android:textColor="@color/white"
-                android:textSize="20sp" />
+                android:textStyle="bold"
+                android:textColor="@color/color_text_primary"
+                android:textSize="23sp"
+                android:fontFamily="monospace" />
 
         </LinearLayout>
 
@@ -233,7 +252,7 @@
                 android:gravity="start"
                 android:padding="5dp"
                 android:text="Today's Forecast"
-                android:textColor="@color/white"
+                android:textColor="@color/color_text_primary"
                 android:textStyle="bold" />
 
             <TextView
@@ -249,7 +268,7 @@
                 android:gravity="end"
                 android:padding="5dp"
                 android:text="Favorite Cities"
-                android:textColor="@color/white"
+                android:textColor="@color/color_text_primary"
                 android:textStyle="bold" />
 
         </LinearLayout>
@@ -299,63 +318,141 @@
         </LinearLayout>
 
         <!-- Nút mở/tắt các tính năng phụ -->
+
+        <!-- Nhóm tính năng phụ (ẩn/hiện) -->
+
         <Button
             android:id="@+id/btnToggleFeatures"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="12dp"
-            android:text="☰"
-            android:textSize="20sp"
+            android:layout_marginTop="30dp"
+            android:layout_marginEnd="21dp"
             android:backgroundTint="@color/white"
+            android:padding="6dp"
+            android:text="☰"
             android:textColor="@color/black"
-            android:padding="6dp" />
+            android:textSize="20sp" />
 
-        <!-- Nhóm tính năng phụ (ẩn/hiện) -->
         <LinearLayout
             android:id="@+id/layoutFeatures"
-            android:layout_width="wrap_content"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
             android:layout_below="@id/btnToggleFeatures"
             android:layout_alignParentEnd="true"
             android:layout_marginEnd="12dp"
             android:orientation="vertical"
             android:background="@drawable/feature_box_bg"
-            android:padding="10dp"
+            android:padding="12dp"
             android:visibility="gone"
             android:elevation="6dp">
 
             <Spinner
                 android:id="@+id/spinnerPlaceType"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:entries="@array/place_types"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/spinner_background"
+                android:popupBackground="@color/white"
+                android:padding="12dp"
+                android:textAlignment="center" />
 
-            <Button
-                android:id="@+id/btnSuggestPlaces"
-                android:layout_width="wrap_content"
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="6dp"
+                android:background="#DDDDDD" />
+            <!-- Gợi ý địa điểm -->
+            <LinearLayout
+                android:id="@+id/itemSuggest"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Gợi ý địa điểm"
-                android:drawableStart="@android:drawable/ic_menu_gallery"
-                android:layout_marginBottom="8dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp"
+                android:clickable="true"
+                android:foreground="?attr/selectableItemBackground">
 
-            <Button
-                android:id="@+id/btnWeatherMap"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Bản đồ thời tiết"
-                android:drawableStart="@android:drawable/ic_dialog_map"
-                android:layout_marginBottom="8dp" />
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_place"
+                    android:layout_marginEnd="12dp" />
 
-            <Button
-                android:id="@+id/btnShareWeather"
-                android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Suggest Nearby Places"
+                    android:textColor="@color/black"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium" />
+            </LinearLayout>
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="6dp"
+                android:background="#DDDDDD" />
+            <!-- Bản đồ thời tiết -->
+            <LinearLayout
+                android:id="@+id/itemMap"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Chia sẻ thời tiết"
-                android:drawableStart="@android:drawable/ic_menu_share" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp"
+                android:clickable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_map"
+
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Weather Map"
+                    android:textColor="@color/black"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium" />
+            </LinearLayout>
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="6dp"
+                android:background="#DDDDDD" />
+            <!-- Chia sẻ thời tiết -->
+            <LinearLayout
+                android:id="@+id/itemShare"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp"
+                android:clickable="true"
+                android:foreground="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_share"
+
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Share Weather"
+                    android:textColor="@color/black"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium" />
+            </LinearLayout>
         </LinearLayout>
+
 
     </RelativeLayout>
 

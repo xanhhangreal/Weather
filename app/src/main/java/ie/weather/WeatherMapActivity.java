@@ -50,12 +50,12 @@ public class WeatherMapActivity extends FragmentActivity implements OnMapReadyCa
         Spinner spinner = findViewById(R.id.spinnerLayer);
 
 
-        String[] layers = {"Clouds", "Temperature", "Wind", "Rain"};
+        String[] layers = {"☁ Clouds", "\uD83C\uDF21 Temperature", "\uD83D\uDCA8 Wind", "\uD83C\uDF27 Rain"};
 
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
-                android.R.layout.simple_spinner_item, // layout chuẩn cho spinner item
+                R.layout.spinner_item,
                 layers
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -69,10 +69,10 @@ public class WeatherMapActivity extends FragmentActivity implements OnMapReadyCa
                 // Gọi update lớp
                 String layer = "";
                 switch (selected) {
-                    case "Clouds": layer = "clouds_new"; break;
-                    case "Temperature": layer = "temp_new"; break;
-                    case "Wind": layer = "wind_new"; break;
-                    case "Rain": layer = "precipitation_new"; break;
+                    case "☁ Clouds": layer = "clouds_new"; break;
+                    case "\uD83C\uDF21 Temperature": layer = "temp_new"; break;
+                    case "\uD83D\uDCA8 Wind": layer = "wind_new"; break;
+                    case "\uD83C\uDF27 Rain": layer = "precipitation_new"; break;
                 }
                 updateWeatherLayer(layer);
             }

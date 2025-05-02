@@ -9,6 +9,9 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -18,8 +21,12 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -95,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             "Melbourne"
     };
     Spinner spinner;
-    Button btnSuggest;
+    LinearLayout btnSuggest;
     FusedLocationProviderClient fusedLocationProviderClient;
     double currentLat, currentLon;
 
@@ -118,9 +125,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         editCityName = findViewById(R.id.editCityName);
         textWindSpeed = findViewById(R.id.textWindSpeed);
         textLastTime = findViewById(R.id.textLastTime);
-        Button btnShare = findViewById(R.id.btnShareWeather);
+
+        LinearLayout btnShare = findViewById(R.id.itemShare);
         btnShare.setOnClickListener(view -> shareWeatherInfo());
-        Button btnMap = findViewById(R.id.btnWeatherMap);
+        LinearLayout btnMap = findViewById(R.id.itemMap);
         btnMap.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, WeatherMapActivity.class);
             startActivity(intent);
@@ -213,22 +221,25 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         spinner = findViewById(R.id.spinnerPlaceType);
-        btnSuggest = findViewById(R.id.btnSuggestPlaces);
+
+
+        btnSuggest = findViewById(R.id.itemSuggest);
 
         btnSuggest.setOnClickListener(v -> {
 //            String placeType = spinner.getSelectedItem().toString();
 //            getLastLocationAndSuggest(placeType);
-            ArrayList<SuggestedPlace> mockPlaces = new ArrayList<>();
-            mockPlaces.add(new SuggestedPlace("Highlands Coffee Nguyễn Trãi", 29.5, "Clear", "https://openweathermap.org/img/wn/01d@2x.png"));
-            mockPlaces.add(new SuggestedPlace("The Coffee House Vincom", 31.0, "Clouds", "https://openweathermap.org/img/wn/03d@2x.png"));
-            mockPlaces.add(new SuggestedPlace("Starbucks Keangnam", 28.2, "Sunny", "https://openweathermap.org/img/wn/01d@2x.png"));
-            mockPlaces.add(new SuggestedPlace("Aha Cafe Trung Kính", 27.4, "Partly Cloudy", "https://openweathermap.org/img/wn/02d@2x.png"));
-            mockPlaces.add(new SuggestedPlace("Trill Rooftop Cafe", 30.1, "Few Clouds", "https://openweathermap.org/img/wn/02d@2x.png"));
-
-            getSupportFragmentManager().beginTransaction()
-                    .replace(android.R.id.content, PlaceSuggestionFragment.newInstance(mockPlaces))
-                    .addToBackStack(null)
-                    .commit();
+//            ArrayList<SuggestedPlace> mockPlaces = new ArrayList<>();
+//            mockPlaces.add(new SuggestedPlace("Highlands Coffee Nguyễn Trãi", 29.5, "Clear", "https://openweathermap.org/img/wn/01d@2x.png"));
+//            mockPlaces.add(new SuggestedPlace("The Coffee House Vincom", 31.0, "Clouds", "https://openweathermap.org/img/wn/03d@2x.png"));
+//            mockPlaces.add(new SuggestedPlace("Starbucks Keangnam", 28.2, "Sunny", "https://openweathermap.org/img/wn/01d@2x.png"));
+//            mockPlaces.add(new SuggestedPlace("Aha Cafe Trung Kính", 27.4, "Partly Cloudy", "https://openweathermap.org/img/wn/02d@2x.png"));
+//            mockPlaces.add(new SuggestedPlace("Trill Rooftop Cafe", 30.1, "Few Clouds", "https://openweathermap.org/img/wn/02d@2x.png"));
+//
+//            getSupportFragmentManager().beginTransaction()
+//                    .replace(android.R.id.content, PlaceSuggestionFragment.newInstance(mockPlaces))
+//                    .addToBackStack(null)
+//                    .commit();
+            showSuggest();
         });
         Button btnToggle = findViewById(R.id.btnToggleFeatures);
         LinearLayout layoutFeatures = findViewById(R.id.layoutFeatures);
@@ -241,6 +252,18 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             }
         });
 
+
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                R.layout.spinner_item, // layout tùy chỉnh hiển thị dòng
+                getResources().getStringArray(R.array.place_types) // từ file strings.xml
+        );
+
+        // Đặt layout cho danh sách xổ xuống (có thể dùng mặc định hoặc tạo mới)
+        adapter.setDropDownViewResource(R.layout.spinner_item_dropdown); // gán layout xổ xuống
+
+        spinner.setAdapter(adapter);
     }
     private void getLastLocationAndSuggest(String type) {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -258,6 +281,58 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 suggester.suggestNearby(location, selectedType);
             }
         });
+    }
+    private void showSuggest() {
+        ArrayList<PlaceWithCoord> fixedPlaces = new ArrayList<>();
+        fixedPlaces.add(new PlaceWithCoord("Highlands Coffee Nguyễn Trãi", 21.0025, 105.8201));
+        fixedPlaces.add(new PlaceWithCoord("The Coffee House Vincom", 21.0160, 105.8463));
+        fixedPlaces.add(new PlaceWithCoord("Starbucks Keangnam", 21.0182, 105.7841));
+        fixedPlaces.add(new PlaceWithCoord("Trill Rooftop Cafe", 21.0042, 105.8120));
+        fixedPlaces.add(new PlaceWithCoord("New York City", 40.7128, -74.0060));
+        fixedPlaces.add(new PlaceWithCoord("Paris", 48.8566, 2.3522));
+        fixedPlaces.add(new PlaceWithCoord("London", 51.5074, -0.1278));
+        fixedPlaces.add(new PlaceWithCoord("Tokyo", 35.6762, 139.6503));
+        fixedPlaces.add(new PlaceWithCoord("San Francisco", 37.7749, -122.4194));
+        fixedPlaces.add(new PlaceWithCoord("Sydney", -33.8688, 151.2093));
+        fixedPlaces.add(new PlaceWithCoord("Dubai", 25.276987, 55.296249));
+        ArrayList<SuggestedPlace> resultList = new ArrayList<>();
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+        for (PlaceWithCoord place : fixedPlaces) {
+            String url = "https://api.openweathermap.org/data/2.5/weather?lat=" + place.lat +
+                    "&lon=" + place.lon +
+                    "&appid=" + apiKey +
+                    "&units=metric";
+
+            JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+                    response -> {
+                        try {
+                            double temp = response.getJSONObject("main").getDouble("temp");
+                            String condition = response.getJSONArray("weather").getJSONObject(0).getString("main");
+                            String icon = response.getJSONArray("weather").getJSONObject(0).getString("icon");
+                            String iconUrl = "https://openweathermap.org/img/wn/" + icon + "@2x.png";
+
+                            resultList.add(new SuggestedPlace(place.name, temp, condition, iconUrl));
+
+                            // 👉 Khi đã lấy đủ dữ liệu thì hiển thị fragment
+                            if (resultList.size() == fixedPlaces.size()) {
+                                runOnUiThread(() -> {
+                                    getSupportFragmentManager().beginTransaction()
+                                            .replace(android.R.id.content, PlaceSuggestionFragment.newInstance(resultList))
+                                            .addToBackStack(null)
+                                            .commit();
+                                });
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    },
+                    error -> Log.e("Weather", "Lỗi API: " + place.name, error)
+            );
+
+            queue.add(request);
+        }
     }
     private void scheduleDailyReminder() {
         // Thông báo vào lúc 7h sáng.
@@ -292,7 +367,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         Intent intent = new Intent(this, WeatherReminderReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
-        long triggerTime = System.currentTimeMillis() + 10 * 1000; // sau 10s
+        long triggerTime = System.currentTimeMillis() + 180 * 1000; // sau 10s
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!alarmManager.canScheduleExactAlarms()) {
@@ -569,8 +644,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 if(i==0){
                     if(pod.equals("n")){
                         imgBG.setImageResource(R.drawable.night_image);
+                        setTextColorScheme(Color.WHITE);
                     }else {
                         imgBG.setImageResource(R.drawable.day_image);
+                        setTextColorScheme(Color.BLACK);
                     }
                 }
             }
@@ -579,6 +656,54 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             Log.d("Update Res",e.getMessage());
         }
     }
+    private void setTextColorScheme(int color) {
+        boolean isNight = color == Color.WHITE ;
+        // Màu chính và phụ
+        int textColor = isNight ? Color.parseColor("#E0E0E0") : Color.parseColor("#222222");
+        int hintColor = isNight ? Color.parseColor("#B0B0B0") : Color.parseColor("#666666");
+        int shadowColor = isNight ? Color.BLACK : Color.TRANSPARENT;
+
+        Log.e("SetColorScheme", "isNight = " + isNight + ", color = " + textColor);
+
+        // TEXTVIEWs
+        TextView textCityName_0 = findViewById(R.id.textCityName);
+        TextView textTemp_0 = findViewById(R.id.textTemp);
+        TextView textConditions_0 = findViewById(R.id.textConditions);
+        TextView textWind_0 = findViewById(R.id.textWind);
+        TextView textWindSpeed_0 = findViewById(R.id.textWindSpeed);
+        TextView textCity_0 = findViewById(R.id.textCity);
+        TextView textLastTime_0 = findViewById(R.id.textLastTime);
+        TextView textShowForecast_0 = findViewById(R.id.textShowForecast);
+        TextView textFavorite_0 = findViewById(R.id.textFavorite);
+
+        TextView[] textViews = {
+                textCityName_0, textTemp_0, textWind_0,
+                textWindSpeed_0, textCity_0, textLastTime_0,
+                textShowForecast_0, textFavorite_0
+        };
+
+        for (TextView tv : textViews) {
+            tv.setTextColor(textColor);
+            tv.setShadowLayer(4, 2, 2, shadowColor); // đổ bóng tăng tương phản nếu là night
+        }
+
+        textConditions.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+        textConditions_0.setShadowLayer(10, 0, 0, Color.parseColor("#99FFFFFF"));
+
+        // EDITTEXT
+        TextInputEditText editCityName_0 = findViewById(R.id.editCityName);
+        editCityName_0.setHint("Enter City Name");
+        editCityName_0.setTextColor(textColor);
+        editCityName_0.setHintTextColor(hintColor);
+        editCityName_0.setShadowLayer(2, 1, 1, shadowColor);
+
+        // ICONs
+        ImageView imgSearch_0 = findViewById(R.id.imgSearch);
+        ImageView imgRefresh_0 = findViewById(R.id.imgRefresh);
+        imgSearch_0.setColorFilter(textColor);
+        imgRefresh_0.setColorFilter(textColor);
+    }
+
 
     @Override
     public void onLocationChanged(Location loca) {
@@ -720,5 +845,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             Log.d("Update Res",e.getMessage());
         }
         favCityAdapter.notifyDataSetChanged();
+    }
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            View view = getCurrentFocus();
+            if (view instanceof EditText) {
+                Rect outRect = new Rect();
+                view.getGlobalVisibleRect(outRect);
+                if (!outRect.contains((int) event.getRawX(), (int) event.getRawY())) {
+                    view.clearFocus();
+
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                    }
+                }
+            }
+        }
+        return super.dispatchTouchEvent(event);
     }
 }

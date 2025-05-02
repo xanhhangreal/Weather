@@ -1,0 +1,4 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="#000000" android:state_enabled="true"/> <!-- Màu đen cho nền sáng -->
+    <item android:color="#E0E0E0"/> <!-- Màu trắng cho nền tối -->
+</selector>

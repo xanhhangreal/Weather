@@ -1,6 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+
     <color name="black_shade">#3D4455</color>
+
+    <color name="teal_200">#03DAC5</color>
+    <color name="teal_700">#018786</color>
+    <!-- Màu nền chủ đạo -->
+    <color name="purple_200">#BB86FC</color>
+    <color name="purple_500">#6200EE</color>
+    <color name="purple_700">#3700B3</color>
+
+    <!-- Màu chữ -->
+    <color name="text_primary_day">#222222</color>     <!-- Đen đậm cho nền sáng -->
+    <color name="text_primary_night">#E0E0E0</color>   <!-- Trắng nhạt dễ nhìn đêm -->
+
+    <!-- Hint & phụ -->
+    <color name="hint_light">#B0B0B0</color>
+    <color name="hint_dark">#666666</color>
+
+    <!-- Màu mờ cho nền trắng hoặc menu bật ra -->
+    <color name="gray_translucent_bg">#F2FFFFFF</color>
+
+    <!-- Nếu dùng mặc định Android Studio -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
 </resources>
