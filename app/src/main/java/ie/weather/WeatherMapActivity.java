@@ -1,5 +1,6 @@
 package ie.weather;
 
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -26,6 +27,7 @@ import com.google.android.gms.maps.model.UrlTileProvider;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Locale;
 
 public class WeatherMapActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -50,7 +52,7 @@ public class WeatherMapActivity extends FragmentActivity implements OnMapReadyCa
         Spinner spinner = findViewById(R.id.spinnerLayer);
 
 
-        String[] layers = {"☁ Clouds", "\uD83C\uDF21 Temperature", "\uD83D\uDCA8 Wind", "\uD83C\uDF27 Rain"};
+        String[] layers = {"☁ Clouds", "\uD83C\uDF21 Temperature", "\uD83D\uDCA8 Wind", "\uD83C\uDF27 Rain","💨 Wind (động)"};
 
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
@@ -63,6 +65,7 @@ public class WeatherMapActivity extends FragmentActivity implements OnMapReadyCa
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+
                 String selected = parent.getItemAtPosition(position).toString();
                 Log.d("SPINNER", "Selected: " + selected);
 
@@ -73,6 +76,10 @@ public class WeatherMapActivity extends FragmentActivity implements OnMapReadyCa
                     case "\uD83C\uDF21 Temperature": layer = "temp_new"; break;
                     case "\uD83D\uDCA8 Wind": layer = "wind_new"; break;
                     case "\uD83C\uDF27 Rain": layer = "precipitation_new"; break;
+                    case "💨 Wind (động)":
+                        Intent intent = new Intent(WeatherMapActivity.this, WindyMapActivity.class);
+                        startActivity(intent);
+                        return; // KHÔNG gọi updateWeatherLayer nữa
                 }
                 updateWeatherLayer(layer);
             }
@@ -177,4 +184,5 @@ public class WeatherMapActivity extends FragmentActivity implements OnMapReadyCa
             }
         }
     }
+
 }

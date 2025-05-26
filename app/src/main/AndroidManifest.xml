@@ -53,6 +53,14 @@
             android:value="AIzaSyD-i0ZFOUsYRlsalHGg8YX2qUBhcicFzF4"/>
         <activity android:name=".WeatherMapActivity" />
         <receiver android:name=".WeatherReminderReceiver" android:exported="true"/>
+        <receiver android:name=".WeatherWidgetUpdater" />
+        <activity android:name=".WindyMapActivity" />
+        <receiver android:name=".BatterySaverReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.os.action.POWER_SAVE_MODE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 

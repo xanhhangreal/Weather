@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -20,7 +21,12 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.d("Reminder", "Receiver chạy!");
-
+        // Kiểm tra tiết kiệm pin
+        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (powerManager != null && powerManager.isPowerSaveMode()) {
+            Log.d("ReminderReceiver", "⚠️ Đang bật tiết kiệm pin - bỏ qua cập nhật widget");
+            return;
+        }
         // 🔹 Lấy dữ liệu thời tiết từ SharedPreferences
         SharedPreferences prefs = context.getSharedPreferences("weather_prefs", Context.MODE_PRIVATE);
         String tempStr = prefs.getString("temp", "0").replace("°C", "").trim();
@@ -100,5 +106,29 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
         }
 
         Log.d("Reminder", "⏱️ Lặp lại sau 10s tại: " + next.getTime());
+    }
+    public static void setAlarmIfNeeded(Context context) {
+        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (powerManager != null && powerManager.isPowerSaveMode()) {
+            Log.d("ReminderReceiver", "🔋 Battery Saver đang bật - không đặt lại Alarm");
+            return;
+        }
+
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(context, WeatherReminderReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+
+        long intervalMillis = 60 * 60 * 1000L; // ví dụ: 1 giờ
+        long triggerAt = System.currentTimeMillis() + intervalMillis;
+
+        if (alarmManager != null) {
+            alarmManager.setInexactRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAt,
+                    intervalMillis,
+                    pendingIntent
+            );
+            Log.d("ReminderReceiver", "✅ Đã đặt lại Alarm cập nhật widget mỗi 1 giờ");
+        }
     }
 }

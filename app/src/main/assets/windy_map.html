@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Windy Map</title>
+    <style>
+        html, body, #windy {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+        }
+    </style>
+
+    <!-- Leaflet 1.4.0: YÊU CẦU bắt buộc -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+
+    <!-- Windy API script -->
+    <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+</head>
+<body>
+<div id="windy"></div>
+<script>
+    const options = {
+      key: 'uHB6G6etiSo2TIUYdGQx1bUTipXNy59x',
+      lat: 21.0285,
+      lon: 105.8542,
+      zoom: 5,
+      overlay: 'wind'
+    };
+
+    windyInit(options, windyAPI => {
+      const { map } = windyAPI;
+      console.log("Windy map initialized", map);
+    });
+</script>
+</body>
+</html>
+
+
+

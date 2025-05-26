@@ -1,5 +1,6 @@
 package ie.weather
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -14,7 +15,24 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 class WeatherWidget : AppWidgetProvider() {
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
 
+        val intent = Intent(context, WeatherWidgetUpdater::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intervalMillis = 15 * 60 * 1000L // 15 phút
+
+        alarmManager.setRepeating(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis(),
+            intervalMillis,
+            pendingIntent
+        )
+    }
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId)
@@ -57,5 +75,16 @@ class WeatherWidget : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.widget_temp, pendingIntent)
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
+    }
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+
+        val intent = Intent(context, WeatherWidgetUpdater::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(pendingIntent)
     }
 }

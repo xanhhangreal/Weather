@@ -18,6 +18,7 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -26,12 +27,14 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -262,6 +265,55 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         adapter.setDropDownViewResource(R.layout.spinner_item_dropdown); // gán layout xổ xuống
 
         spinner.setAdapter(adapter);
+
+        // bật tawts thông báo
+        Switch notifySwitch = findViewById(R.id.switch_notification);
+        SharedPreferences sharedPref = getSharedPreferences("weather_prefs", Context.MODE_PRIVATE);
+
+        // Gán trạng thái đã lưu
+        boolean enabled = sharedPref.getBoolean("notify_enabled", false);
+        notifySwitch.setChecked(enabled);
+
+        // Khôi phục alarm nếu đã bật
+        if (enabled) {
+            WeatherNotificationUtil.scheduleWeatherReminder(this);
+        }
+
+        // Lắng nghe thay đổi
+        notifySwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                sharedPref.edit().putBoolean("notify_enabled", isChecked).apply();
+                if (isChecked) {
+                    WeatherNotificationUtil.scheduleWeatherReminder(MainActivity.this);
+                } else {
+                    WeatherNotificationUtil.cancelWeatherReminder(MainActivity.this);
+                }
+            }
+        });
+
+        // tiết kiẹm pin
+        if (isBatterySaverOn()) {
+            Toast.makeText(this, "⚠️ Thiết bị đang bật chế độ tiết kiệm pin.\nMột số tính năng bị tạm dừng.", Toast.LENGTH_LONG).show();
+            Log.e("baterry", "Thiết bị đang bật chế độ tiết kiệm pin ");
+            // Dừng cập nhật bằng AlarmManager
+            cancelWeatherAlarms();
+        }
+    }
+    private void cancelWeatherAlarms() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        // Alarm cập nhật dữ liệu thời tiết định kỳ
+        Intent updateIntent = new Intent(this, WeatherReminderReceiver.class);
+        PendingIntent updatePendingIntent = PendingIntent.getBroadcast(this, 0, updateIntent, PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.cancel(updatePendingIntent);
+
+        // Alarm gửi thông báo thời tiết (nếu dùng riêng)
+        Intent notifyIntent = new Intent(this, WeatherReminderReceiver.class); // hoặc class khác nếu bạn tách riêng
+        PendingIntent notifyPendingIntent = PendingIntent.getBroadcast(this, 1, notifyIntent, PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.cancel(notifyPendingIntent);
+
+        Log.d("BatterySaver", "⛔ Đã huỷ tất cả alarm (cập nhật + thông báo)");
     }
     private void getLastLocationAndSuggest(String type) {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -933,5 +985,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             }
         }
         return super.dispatchTouchEvent(event);
+    }
+    private boolean isBatterySaverOn() {
+        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        return powerManager != null && powerManager.isPowerSaveMode();
     }
 }
