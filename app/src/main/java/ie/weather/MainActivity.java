@@ -3,6 +3,7 @@ package ie.weather;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -13,6 +14,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -21,6 +24,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.speech.RecognizerIntent;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -58,6 +62,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.material.textfield.TextInputEditText;
 import com.squareup.picasso.Picasso;
 
+import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -65,6 +70,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -72,10 +78,12 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 
@@ -165,7 +173,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         }
         location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         if (location != null) {
-            Toast.makeText(this,"Fetching Last known location",Toast.LENGTH_SHORT).show(); // visit cuối cùng
+            Toast.makeText(this, "Fetching Last known location", Toast.LENGTH_SHORT).show(); // visit cuối cùng
             lat = location.getLatitude();
             lon = location.getLongitude();
         }
@@ -176,31 +184,33 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         weatherModelAdapter = new WeatherModelAdapter(this, arr);
         rvWeather.setAdapter(weatherModelAdapter);
 
-        favCityAdapter = new FavCityAdapter(this,favArr);
+        favCityAdapter = new FavCityAdapter(this, favArr);
         rvFavs.setAdapter(favCityAdapter);
 
         setupSaveKey();
-
-        for(int i=2;i<saveKey.length;i++){
-            getFavCoord(saveKey[i],i);
+        // Hoặc khởi tạo nếu lần đầu
+        Log.d("DEBUG", "saveKey: " + Arrays.toString(saveKey));
+        for (int i = 2; i < saveKey.length; i++) {
+            getFavCoord(saveKey[i], i);
         }
+
 
         imgSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 boolean isInternetAvailable = NetworkCheck.isNetworkAvailable(getApplicationContext());
-                if(isInternetAvailable){
+                if (isInternetAvailable) {
                     String city = editCityName.getText().toString();
                     if (city.equals("")) {
                         Toast.makeText(MainActivity.this, "Please enter city Name", Toast.LENGTH_SHORT).show();
                         editCityName.requestFocus();
                         editCityName.setError("Please Enter City Name");
-                    }else{
+                    } else {
                         updateWeather(city);
                         addFavoriteCity(city);
                     }
-                }else {
-                    Toast.makeText(MainActivity.this,"No Internet Connection",Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "No Internet Connection", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -209,16 +219,16 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             @Override
             public void onClick(View v) {
                 boolean isInternetAvailable = NetworkCheck.isNetworkAvailable(getApplicationContext());
-                if(isInternetAvailable){
-                    Toast.makeText(MainActivity.this,"Refreshing...",Toast.LENGTH_SHORT).show();
-                    getCurrentWeather(lat,lon);
-                    getForecastWeather(lat,lon);
+                if (isInternetAvailable) {
+                    Toast.makeText(MainActivity.this, "Refreshing...", Toast.LENGTH_SHORT).show();
+                    getCurrentWeather(lat, lon);
+                    getForecastWeather(lat, lon);
                     favArr.clear();
-                    for(int i=2;i<saveKey.length;i++){
-                        getFavCoord(saveKey[i],i);
+                    for (int i = 2; i < saveKey.length; i++) {
+                        getFavCoord(saveKey[i], i);
                     }
-                }else {
-                    Toast.makeText(MainActivity.this,"No Internet Connection",Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "No Internet Connection", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -255,7 +265,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 layoutFeatures.setVisibility(View.VISIBLE);
             }
         });
-
 
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
@@ -302,7 +311,16 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             cancelWeatherAlarms();
         }
 
+        LinearLayout itemMic = findViewById(R.id.itemMic);
+        itemMic.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                speakNow(); // Gọi hàm nhận diện giọng nói
+            }
+        });
+
     }
+
     private void getLastLocationAndSuggest(String type) {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 100);
@@ -335,19 +353,32 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     }
 
     private void addFavoriteCity(String city) {
+//        SharedPreferences sharedPreferences = getSharedPreferences("FavoriteCities", MODE_PRIVATE);
+//        SharedPreferences.Editor editor = sharedPreferences.edit();
+//
+//        Set<String> favSet = sharedPreferences.getStringSet("cities", new HashSet<>());
+//
+//        // Nếu đã có rồi thì không thêm nữa
+//        if (!favSet.contains(city)) {
+//            favSet.add(city);
+//            editor.putStringSet("cities", favSet);
+//            editor.apply();
+//
+//            // Cập nhật lại saveKey mảng
+//            setupSaveKey();
+//        }
         SharedPreferences sharedPreferences = getSharedPreferences("FavoriteCities", MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
 
-        Set<String> favSet = sharedPreferences.getStringSet("cities", new HashSet<>());
+        // Luôn tạo bản sao để đảm bảo ghi được
+        Set<String> favSet = new HashSet<>(sharedPreferences.getStringSet("cities", new HashSet<>()));
 
-        // Nếu đã có rồi thì không thêm nữa
         if (!favSet.contains(city)) {
             favSet.add(city);
-            editor.putStringSet("cities", favSet);
+            editor.putStringSet("cities", favSet); // Ghi bản sao mới
             editor.apply();
 
-            // Cập nhật lại saveKey mảng
-            setupSaveKey();
+            setupSaveKey(); // Cập nhật lại mảng saveKey
         }
     }
 
@@ -404,6 +435,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             queue.add(request);
         }
     }
+
     private void scheduleDailyReminder() {
         // Thông báo vào lúc 7h sáng.
 //        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
@@ -450,10 +482,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
         Log.d("Reminder", "🚀 Đặt lần đầu sau 10s tại " + new Date(triggerTime));
     }
+
     private void shareWeatherInfo() {
         Bitmap bmp = createWeatherSnapshot();
         shareBitmap(bmp);
     }
+
     private String getRandomQuote() {
         String[] quotes = {
                 "🌞 Trời đẹp thế này, ai rủ đi chơi không?",
@@ -465,6 +499,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         int randomIndex = new Random().nextInt(quotes.length);
         return quotes[randomIndex];
     }
+
     private void shareBitmap(Bitmap bitmap) {
         try {
             File cachePath = new File(getCacheDir(), "images");
@@ -489,6 +524,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             e.printStackTrace();
         }
     }
+
     private Bitmap createWeatherSnapshot() {
         LayoutInflater inflater = LayoutInflater.from(this);
         View view = inflater.inflate(R.layout.weather_share_snapshot, null);
@@ -527,6 +563,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
         return bitmap;
     }
+
     private void updateWeather(String city) {
         String url = "https://api.openweathermap.org/data/2.5/weather?q="
                 + city + "&appid=" + apiKey + "&units=metric";
@@ -605,8 +642,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             dateTime = LocalDateTime.now();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             return dateTime.format(formatter);
-        }
-        else {
+        } else {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             return sdf.format(new Date());
         }
@@ -641,7 +677,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             @Override
             public void onResponse(JSONObject response) {
                 textLastTime.setText(getCurrentTime());
-                saveLastResponse(response,0);
+                saveLastResponse(response, 0);
                 progressBar.setVisibility(View.GONE);
                 rLHome.setVisibility(View.VISIBLE);
                 updateCurrentWeather(response);
@@ -649,14 +685,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.d("Fetch Error",error.getMessage());
+                Log.d("Fetch Error", error.getMessage());
             }
         });
         requestQueue.add(jsonObjectRequest);
     }
 
     private void updateCurrentWeather(JSONObject response) {
-        try{
+        try {
             String city = response.getString("name");
             textCityName.setText(city);
 
@@ -675,7 +711,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
             double wSpeed = response.getJSONObject("wind")
                     .getDouble("speed");
-            textWindSpeed.setText(""+wSpeed+"Km/h");
+            textWindSpeed.setText("" + wSpeed + "Km/h");
 
             SharedPreferences sharedPreferences = getSharedPreferences("weather_prefs", MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
@@ -685,7 +721,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             editor.apply();
             SharedPreferences prefs = getSharedPreferences("weather_prefs", MODE_PRIVATE);
             boolean isScheduled = prefs.getBoolean("reminder_scheduled", false);
-            Log.e("Remind: ","isScheduled");
+            Log.e("Remind: ", "isScheduled");
             if (!isScheduled) {
 
                 scheduleDailyReminder();
@@ -693,8 +729,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             }
 
 
-        }catch (Exception e){
-            Log.d("Update Res",e.getMessage());
+        } catch (Exception e) {
+            Log.d("Update Res", e.getMessage());
         }
 
     }
@@ -713,14 +749,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             @Override
             public void onResponse(JSONObject response) {
                 textLastTime.setText(getCurrentTime());
-                saveLastResponse(response,1);
+                saveLastResponse(response, 1);
                 arr.clear();
                 updateForecastWeather(response);
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.d("Fetch Error",error.getMessage());
+                Log.d("Fetch Error", error.getMessage());
             }
         });
 
@@ -728,7 +764,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     }
 
     private void updateForecastWeather(JSONObject response) {
-        try{
+        try {
             int loop = response.getInt("cnt");
             JSONArray forecast = response.getJSONArray("list");
 
@@ -748,24 +784,25 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 String pod = forecast.getJSONObject(i)
                         .getJSONObject("sys")
                         .getString("pod");
-                arr.add(new WeatherModel(temp, condition, wSpeed,time,pod));
-                if(i==0){
-                    if(pod.equals("n")){
+                arr.add(new WeatherModel(temp, condition, wSpeed, time, pod));
+                if (i == 0) {
+                    if (pod.equals("n")) {
                         imgBG.setImageResource(R.drawable.night_image);
                         setTextColorScheme(Color.WHITE);
-                    }else {
+                    } else {
                         imgBG.setImageResource(R.drawable.day_image);
                         setTextColorScheme(Color.BLACK);
                     }
                 }
             }
             weatherModelAdapter.notifyDataSetChanged();
-        }catch (Exception e){
-            Log.d("Update Res",e.getMessage());
+        } catch (Exception e) {
+            Log.d("Update Res", e.getMessage());
         }
     }
+
     private void setTextColorScheme(int color) {
-        boolean isNight = color == Color.WHITE ;
+        boolean isNight = color == Color.WHITE;
         // Màu chính và phụ
         int textColor = isNight ? Color.parseColor("#E0E0E0") : Color.parseColor("#222222");
         int hintColor = isNight ? Color.parseColor("#B0B0B0") : Color.parseColor("#666666");
@@ -830,22 +867,22 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     private void saveLastResponse(JSONObject res, int time) {
         SharedPreferences sharedPreferences = getSharedPreferences("WeatherData", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
-        try{
+        try {
             String save = res.toString();
             if (time >= 0 && time < saveKey.length) {
                 editor.putString(saveKey[time], save);
             }
             editor.putString("Time", getCurrentTime());
             editor.apply();
-        }catch (Exception e){
-            Log.d("Save Res",e.getMessage());
+        } catch (Exception e) {
+            Log.d("Save Res", e.getMessage());
         }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        for (int i=0;i<saveKey.length;i++) {
+        for (int i = 0; i < saveKey.length; i++) {
             retrieveLastResponse(i);
         }
     }
@@ -857,7 +894,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         textLastTime.setText(dateTime);
         try {
             JSONObject response = new JSONObject(weatherData);
-            switch (time){
+            switch (time) {
                 case 0:
                     updateCurrentWeather(response);
                     break;
@@ -873,20 +910,20 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                     updateFavWeather(response);
                     break;
                 default:
-                    Log.d("retrieveLastResponse","Wrong time");
+                    Log.d("retrieveLastResponse", "Wrong time");
                     break;
             }
-        }catch (Exception ex){
-            Log.d("Load Res",ex.getMessage());
+        } catch (Exception ex) {
+            Log.d("Load Res", ex.getMessage());
         }
     }
 
-    public void getFavCoord(String name,int i){
+    public void getFavCoord(String name, int i) {
         String url = "https://api.openweathermap.org/data/2.5/weather?q="
-                +name
-                +"&appid="
-                +apiKey
-                +"&units=metric";
+                + name
+                + "&appid="
+                + apiKey
+                + "&units=metric";
         RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
 
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
@@ -898,7 +935,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                     double lat = response.getJSONObject("coord").getDouble("lat");
                     getFavWeather(lat, lon, i);
                 } catch (Exception ex) {
-                    Log.d("getFavCoord","Favorite City Fetch Failed");
+                    Log.d("getFavCoord", "Favorite City Fetch Failed");
                 }
             }
         }, new Response.ErrorListener() {
@@ -926,13 +963,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, urlCurrent, null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                saveLastResponse(response,i);
+                saveLastResponse(response, i);
                 updateFavWeather(response);
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.d("Fetch Error",error.getMessage());
+                Log.d("Fetch Error", error.getMessage());
             }
         });
 
@@ -940,7 +977,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     }
 
     private void updateFavWeather(JSONObject response) {
-        try{
+        try {
             String city = response.getString("name");
             String temperature = response.getJSONObject("main").getString("temp");
             String img = response.getJSONArray("weather")
@@ -951,12 +988,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                     .getString("main");
             double wSpeed = response.getJSONObject("wind")
                     .getDouble("speed");
-            favArr.add(new FavCityModel(0,city,temperature,condition,String.valueOf(wSpeed),img));
-        }catch (Exception e){
-            Log.d("Update Res",e.getMessage());
+            favArr.add(new FavCityModel(0, city, temperature, condition, String.valueOf(wSpeed), img));
+        } catch (Exception e) {
+            Log.d("Update Res", e.getMessage());
         }
         favCityAdapter.notifyDataSetChanged();
     }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -976,10 +1014,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         }
         return super.dispatchTouchEvent(event);
     }
+
     private boolean isBatterySaverOn() {
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         return powerManager != null && powerManager.isPowerSaveMode();
     }
+
     private void cancelWeatherAlarms() {
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 
@@ -996,6 +1036,65 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         Log.d("BatterySaver", "⛔ Đã huỷ tất cả alarm (cập nhật + thông báo)");
     }
 
+    private static final int REQUEST_CODE_SPEECH_INPUT = 100;
 
+    private void speakNow() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Hãy nói tên thành phố...");
 
+        try {
+            startActivityForResult(intent, REQUEST_CODE_SPEECH_INPUT);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Thiết bị không hỗ trợ giọng nói", Toast.LENGTH_SHORT).show();
+        }
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_SPEECH_INPUT && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            if (result != null && !result.isEmpty()) {
+                String city = result.get(0);
+                Toast.makeText(this, "Bạn nói: " + city, Toast.LENGTH_SHORT).show();
+
+                // Dùng Geocoder để lấy lat, lon
+                Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+                try {
+                    List<Address> addresses = geocoder.getFromLocationName(city, 1);
+                    if (addresses != null && !addresses.isEmpty()) {
+                        double lat = addresses.get(0).getLatitude();
+                        double lon = addresses.get(0).getLongitude();
+
+                        // Lưu city vào SharedPreferences (nếu widget cần)
+                        SharedPreferences prefs = getSharedPreferences("weather_prefs", MODE_PRIVATE);
+                        prefs.edit()
+                                .putString("city", city)
+                                .putString("lat", String.valueOf(lat))
+                                .putString("lon", String.valueOf(lon))
+                                .apply();
+
+                        // Gọi cập nhật thời tiết
+                        addFavoriteCity(city);
+                        getCurrentWeather(lat, lon);
+                        getForecastWeather(lat, lon); // nếu bạn dùng thêm forecast
+                        favArr.clear();
+                        for (int i = 2; i < saveKey.length; i++) {
+                            getFavCoord(saveKey[i], i);
+                        }
+
+                    } else {
+                        Toast.makeText(this, "Không tìm thấy vị trí: " + city, Toast.LENGTH_SHORT).show();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Lỗi khi tìm vị trí", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+
+}
