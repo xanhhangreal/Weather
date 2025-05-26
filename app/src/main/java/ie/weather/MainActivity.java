@@ -55,6 +55,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -69,7 +70,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity implements LocationListener {
 
@@ -91,16 +95,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     private Location location;
     String apiKey = "485ec85551ded720ef8f68eccf7f96e0";
     String apiKeyGoogle = "AIzaSyD-i0ZFOUsYRlsalHGg8YX2qUBhcicFzF4";
-    String[] saveKey = {
-            "CurrentWeatherData",
-            "ForecastWeatherData",
-            "New York",
-            "Singapore",
-            "Mumbai",
-            "Delhi",
-            "Sydney",
-            "Melbourne"
-    };
+    String[] saveKey;
     Spinner spinner;
     LinearLayout btnSuggest;
     FusedLocationProviderClient fusedLocationProviderClient;
@@ -178,6 +173,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         favCityAdapter = new FavCityAdapter(this,favArr);
         rvFavs.setAdapter(favCityAdapter);
 
+        setupSaveKey();
+
         for(int i=2;i<saveKey.length;i++){
             getFavCoord(saveKey[i],i);
         }
@@ -194,6 +191,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                         editCityName.setError("Please Enter City Name");
                     }else{
                         updateWeather(city);
+                        addFavoriteCity(city);
                     }
                 }else {
                     Toast.makeText(MainActivity.this,"No Internet Connection",Toast.LENGTH_SHORT).show();
@@ -282,6 +280,38 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             }
         });
     }
+
+    private void setupSaveKey() {
+        SharedPreferences sharedPreferences = getSharedPreferences("FavoriteCities", MODE_PRIVATE);
+        Set<String> originalSet = sharedPreferences.getStringSet("cities", new HashSet<>());
+        Set<String> favSet = new HashSet<>(originalSet);
+
+        List<String> fullList = new ArrayList<>();
+        fullList.add("CurrentWeatherData");
+        fullList.add("ForecastWeatherData");
+
+        fullList.addAll(favSet); // Thêm thành phố yêu thích
+        saveKey = fullList.toArray(new String[0]);
+    }
+
+    private void addFavoriteCity(String city) {
+        SharedPreferences sharedPreferences = getSharedPreferences("FavoriteCities", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+
+        Set<String> favSet = sharedPreferences.getStringSet("cities", new HashSet<>());
+
+        // Nếu đã có rồi thì không thêm nữa
+        if (!favSet.contains(city)) {
+            favSet.add(city);
+            editor.putStringSet("cities", favSet);
+            editor.apply();
+
+            // Cập nhật lại saveKey mảng
+            setupSaveKey();
+        }
+    }
+
+
     private void showSuggest() {
         ArrayList<PlaceWithCoord> fixedPlaces = new ArrayList<>();
         fixedPlaces.add(new PlaceWithCoord("Highlands Coffee Nguyễn Trãi", 21.0025, 105.8201));
@@ -459,37 +489,75 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     }
     private void updateWeather(String city) {
         String url = "https://api.openweathermap.org/data/2.5/weather?q="
-                +city
-                +"&appid="
-                +apiKey
-                +"&units=metric";
-        RequestQueue requestQueue = Volley.newRequestQueue(MainActivity.this);
+                + city + "&appid=" + apiKey + "&units=metric";
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
 
-        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, url, null, new Response.Listener<JSONObject>() {
-            @Override
-            public void onResponse(JSONObject response) {
-                try {
-                    if(response.getString("cod").equals("404")){
-                        Toast.makeText(MainActivity.this, "Please enter correct city name", Toast.LENGTH_LONG).show();
-                    }else {
-                        textLastTime.setText(getCurrentTime());
-                        lon = response.getJSONObject("coord").getDouble("lon");
-                        lat = response.getJSONObject("coord").getDouble("lat");
-                        getCurrentWeather(lat, lon);
-                        getForecastWeather(lat, lon);
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
+                Request.Method.GET, url, null,
+                response -> {
+                    try {
+                        // 1. Cập nhật UI chính
+                        String name = response.getString("name");
+                        String temp = response.getJSONObject("main").getString("temp");
+                        String condition = response.getJSONArray("weather")
+                                .getJSONObject(0).getString("main");
+                        double wSpeedVal = response.getJSONObject("wind").getDouble("speed");
+                        String wSpeed = String.valueOf(wSpeedVal);
+                        String icon = response.getJSONArray("weather")
+                                .getJSONObject(0).getString("icon");
+
+                        textCityName.setText(name);
+                        textTemp.setText(temp + "°C");
+                        textConditions.setText(condition);
+                        textWindSpeed.setText(wSpeed + " m/s");
+                        // ... (các view khác)
+
+                        weatherModelAdapter.notifyDataSetChanged();
+
+                        // 2. Thêm vào danh sách Yêu thích nếu chưa có
+                        boolean already = false;
+                        for (FavCityModel f : favArr) {
+                            if (f.getCity().equalsIgnoreCase(name)) {
+                                already = true;
+                                break;
+                            }
+                        }
+                        if (!already) {
+                            // Nếu đã 7 thành phố rồi thì loại phần tử đầu tiên (oldest)
+                            if (favArr.size() >= 7) {
+                                favArr.remove(0);
+                            }
+
+                            FavCityModel newFav = new FavCityModel(
+                                    0,      // hoặc id bất kỳ
+                                    name,
+                                    temp,
+                                    condition,
+                                    wSpeed,
+                                    icon
+                            );
+                            favArr.add(newFav);
+                            favCityAdapter.notifyDataSetChanged();
+                        }
+
+                        // 3. (Tùy chọn) Lưu SharedPreferences để khi vào lại vẫn giữ
+                        SharedPreferences prefs = getSharedPreferences("WeatherData", MODE_PRIVATE);
+                        SharedPreferences.Editor editor = prefs.edit();
+                        editor.putString(name, response.toString());
+                        editor.apply();
+
+                    } catch (JSONException e) {
+                        Log.e("updateWeather", "Parsing error", e);
                     }
-                } catch (Exception ex) {
-                    Toast.makeText(MainActivity.this, "Please enter correct city name", Toast.LENGTH_LONG).show();
-                }
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.d("Fetch Error","city not found");
-            }
-        });
+                },
+                error -> Toast.makeText(MainActivity.this,
+                        "Không lấy được dữ liệu: " + error.getMessage(),
+                        Toast.LENGTH_SHORT).show()
+        );
+
         requestQueue.add(jsonObjectRequest);
     }
+
 
     private String getCurrentTime() {
         LocalDateTime dateTime = null;
@@ -720,12 +788,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     }
 
     private void saveLastResponse(JSONObject res, int time) {
-
         SharedPreferences sharedPreferences = getSharedPreferences("WeatherData", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         try{
             String save = res.toString();
-            editor.putString(saveKey[time], save);
+            if (time >= 0 && time < saveKey.length) {
+                editor.putString(saveKey[time], save);
+            }
             editor.putString("Time", getCurrentTime());
             editor.apply();
         }catch (Exception e){
