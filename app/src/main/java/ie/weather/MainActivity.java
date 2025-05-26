@@ -265,7 +265,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         adapter.setDropDownViewResource(R.layout.spinner_item_dropdown); // gán layout xổ xuống
 
         spinner.setAdapter(adapter);
-
         // bật tawts thông báo
         Switch notifySwitch = findViewById(R.id.switch_notification);
         SharedPreferences sharedPref = getSharedPreferences("weather_prefs", Context.MODE_PRIVATE);
@@ -299,21 +298,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
             // Dừng cập nhật bằng AlarmManager
             cancelWeatherAlarms();
         }
-    }
-    private void cancelWeatherAlarms() {
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 
-        // Alarm cập nhật dữ liệu thời tiết định kỳ
-        Intent updateIntent = new Intent(this, WeatherReminderReceiver.class);
-        PendingIntent updatePendingIntent = PendingIntent.getBroadcast(this, 0, updateIntent, PendingIntent.FLAG_IMMUTABLE);
-        alarmManager.cancel(updatePendingIntent);
-
-        // Alarm gửi thông báo thời tiết (nếu dùng riêng)
-        Intent notifyIntent = new Intent(this, WeatherReminderReceiver.class); // hoặc class khác nếu bạn tách riêng
-        PendingIntent notifyPendingIntent = PendingIntent.getBroadcast(this, 1, notifyIntent, PendingIntent.FLAG_IMMUTABLE);
-        alarmManager.cancel(notifyPendingIntent);
-
-        Log.d("BatterySaver", "⛔ Đã huỷ tất cả alarm (cập nhật + thông báo)");
     }
     private void getLastLocationAndSuggest(String type) {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -990,4 +975,22 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         return powerManager != null && powerManager.isPowerSaveMode();
     }
-}
+    private void cancelWeatherAlarms() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        // Alarm cập nhật dữ liệu thời tiết định kỳ
+        Intent updateIntent = new Intent(this, WeatherReminderReceiver.class);
+        PendingIntent updatePendingIntent = PendingIntent.getBroadcast(this, 0, updateIntent, PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.cancel(updatePendingIntent);
+
+        // Alarm gửi thông báo thời tiết (nếu dùng riêng)
+        Intent notifyIntent = new Intent(this, WeatherReminderReceiver.class); // hoặc class khác nếu bạn tách riêng
+        PendingIntent notifyPendingIntent = PendingIntent.getBroadcast(this, 1, notifyIntent, PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.cancel(notifyPendingIntent);
+
+        Log.d("BatterySaver", "⛔ Đã huỷ tất cả alarm (cập nhật + thông báo)");
+    }
+
+
+
+    }
