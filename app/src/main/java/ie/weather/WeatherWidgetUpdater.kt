@@ -16,6 +16,8 @@ import org.json.JSONObject
 class WeatherWidgetUpdater : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        Log.d("WeatherWidgetUpdater", "📥 Alarm nhận được - bắt đầu cập nhật dữ liệu")
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Lấy toạ độ hoặc tên thành phố từ SharedPreferences
@@ -25,7 +27,7 @@ class WeatherWidgetUpdater : BroadcastReceiver() {
                 // Gọi API OpenWeatherMap
                 val apiKey = "485ec85551ded720ef8f68eccf7f96e0" //
                 val url = "https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$apiKey&units=metric"
-
+                Log.d("WeatherWidgetUpdater", "🌐 Gọi API: $url")
                 val client = OkHttpClient()
                 val request = Request.Builder().url(url).build()
                 val response = client.newCall(request).execute()
@@ -42,8 +44,9 @@ class WeatherWidgetUpdater : BroadcastReceiver() {
                         .putString("temp", temp)
                         .putString("icon", icon)
                         .apply()
-
+                    Log.d("WeatherWidgetUpdater", "✅ Lưu SharedPreferences: temp=$temp, icon=$icon")
                     // Gọi cập nhật lại widget
+                    Log.d("WeatherWidgetUpdater", "🔄 Gọi lại update Widget qua AppWidgetManager")
                     val manager = AppWidgetManager.getInstance(context)
                     val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidget::class.java))
                     WeatherWidget().onUpdate(context, manager, ids)

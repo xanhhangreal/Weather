@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 class WeatherWidget : AppWidgetProvider() {
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-
+        Log.d("WeatherWidget", "📌 Widget được thêm vào màn hình chính")
         val intent = Intent(context, WeatherWidgetUpdater::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             context, 0, intent, PendingIntent.FLAG_IMMUTABLE
@@ -26,14 +26,17 @@ class WeatherWidget : AppWidgetProvider() {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intervalMillis = 15 * 60 * 1000L // 15 phút
 
+        //val intervalMillis = 20 * 1000L // 20a
         alarmManager.setRepeating(
             AlarmManager.RTC_WAKEUP,
             System.currentTimeMillis(),
             intervalMillis,
             pendingIntent
         )
+        Log.d("WeatherWidget", "⏰ Đã đặt alarm cập nhật mỗi 15p")
     }
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        Log.d("WeatherWidget", "🔄 Gọi cập nhật widget thủ công/bởi hệ thống")
         for (appWidgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId)
         }
@@ -41,13 +44,14 @@ class WeatherWidget : AppWidgetProvider() {
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+
         val views = RemoteViews(context.packageName, R.layout.weather_widget)
 
         val sharedPref = context.getSharedPreferences("weather_prefs", Context.MODE_PRIVATE)
         val temp = sharedPref.getString("temp", "--°C")
         val city = sharedPref.getString("city", "City")
         val iconCode = sharedPref.getString("icon", "01d")
-
+        Log.d("WeatherWidget", "🧊 Đang cập nhật UI: $city - $temp - icon: $iconCode")
         views.setTextViewText(R.id.widget_temp, temp)
         views.setTextViewText(R.id.widget_city, city)
 
@@ -78,7 +82,7 @@ class WeatherWidget : AppWidgetProvider() {
     }
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-
+        Log.d("WeatherWidget", "❌ Widget bị gỡ bỏ - huỷ alarm")
         val intent = Intent(context, WeatherWidgetUpdater::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             context, 0, intent, PendingIntent.FLAG_IMMUTABLE

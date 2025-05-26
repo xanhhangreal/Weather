@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -123,7 +124,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         editCityName = findViewById(R.id.editCityName);
         textWindSpeed = findViewById(R.id.textWindSpeed);
         textLastTime = findViewById(R.id.textLastTime);
-
+        IntentFilter filter = new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
+        BatterySaverReceiver batteryReceiver = new BatterySaverReceiver();
+        registerReceiver(batteryReceiver, filter);
         LinearLayout btnShare = findViewById(R.id.itemShare);
         btnShare.setOnClickListener(view -> shareWeatherInfo());
         LinearLayout btnMap = findViewById(R.id.itemMap);
@@ -901,7 +904,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.d("Fetch Error",error.getMessage());
+                if (error != null) {
+                    Log.d("VolleyError", "API lỗi: " + (error.getMessage() != null ? error.getMessage() : error.toString()));
+                }
             }
         });
         requestQueue.add(jsonObjectRequest);

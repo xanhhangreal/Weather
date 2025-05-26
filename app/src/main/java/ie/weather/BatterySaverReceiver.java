@@ -11,6 +11,7 @@ import android.util.Log;
 public class BatterySaverReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
+        Log.d("BatterySaver", "🔋 Tiết kiệm pin: " );
         PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         if (powerManager == null) return;
 
@@ -27,7 +28,11 @@ public class BatterySaverReceiver extends BroadcastReceiver {
                 Log.d("BatterySaver", "⛔ Đã huỷ alarm cập nhật widget");
             }
         } else {
-            WeatherReminderReceiver.setAlarmIfNeeded(context);
+            try {
+                WeatherReminderReceiver.setAlarmIfNeeded(context);
+            } catch (Exception e) {
+                Log.e("BatterySaver", "❌ Lỗi khi khôi phục alarm: " + e.getMessage());
+            }
 
         }
     }

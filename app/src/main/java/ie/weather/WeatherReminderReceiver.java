@@ -108,27 +108,32 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
         Log.d("Reminder", "⏱️ Lặp lại sau 10s tại: " + next.getTime());
     }
     public static void setAlarmIfNeeded(Context context) {
-        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        if (powerManager != null && powerManager.isPowerSaveMode()) {
-            Log.d("ReminderReceiver", "🔋 Battery Saver đang bật - không đặt lại Alarm");
+        if (context == null) {
+            Log.w("ReminderReceiver", "⚠️ Context null, không thể đặt alarm");
             return;
         }
 
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Intent intent = new Intent(context, WeatherReminderReceiver.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        if (powerManager != null && powerManager.isPowerSaveMode()) {
+            Log.d("ReminderReceiver", "❌ Tiết kiệm pin đang bật - không đặt alarm");
+            return;
+        }
 
-        long intervalMillis = 60 * 60 * 1000L; // ví dụ: 1 giờ
-        long triggerAt = System.currentTimeMillis() + intervalMillis;
+        try {
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(context, WeatherReminderReceiver.class);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
-        if (alarmManager != null) {
+            long interval = 15 * 60 * 1000L;
             alarmManager.setInexactRepeating(
                     AlarmManager.RTC_WAKEUP,
-                    triggerAt,
-                    intervalMillis,
+                    System.currentTimeMillis() + interval,
+                    interval,
                     pendingIntent
             );
-            Log.d("ReminderReceiver", "✅ Đã đặt lại Alarm cập nhật widget mỗi 1 giờ");
+            Log.d("ReminderReceiver", "✅ Alarm đã được đặt lại");
+        } catch (Exception e) {
+            Log.e("ReminderReceiver", "❌ Lỗi đặt alarm: " + e.getMessage());
         }
     }
 }
