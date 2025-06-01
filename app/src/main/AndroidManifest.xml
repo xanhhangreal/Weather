@@ -62,6 +62,12 @@
                 <action android:name="android.os.action.POWER_SAVE_MODE_CHANGED" />
             </intent-filter>
         </receiver>
+
+        <!-- Đăng ký ChatActivity -->
+        <activity
+            android:name=".ChatActivity"
+            android:label="Chatbot Thời Tiết"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
     </application>
 
 

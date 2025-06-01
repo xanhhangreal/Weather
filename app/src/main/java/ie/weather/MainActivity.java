@@ -1,6 +1,9 @@
 package ie.weather;
 
 import android.app.AlarmManager;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.content.Intent;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
@@ -117,6 +120,16 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        LinearLayout itemChatbot = findViewById(R.id.itemChatbot);
+
+        itemChatbot.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // 3. Mở ChatActivity khi bấm vào “Chatbot thời tiết”
+                Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+                startActivity(intent);
+            }
+        });
 
         progressBar = findViewById(R.id.pBarLoading);
         rLHome = findViewById(R.id.RLHome);
