@@ -3,11 +3,13 @@ package ie.weather;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -27,20 +29,23 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
 public class ChatActivity extends AppCompatActivity {
+
     private EditText inputMessage;
-    private ImageButton sendButton;   // Đổi từ Button thành ImageButton
-    private TextView chatResult;
-    private ScrollView scrollContainer; // Thêm ScrollView để cuộn cuối
+    private ImageButton sendButton;
+    private ScrollView scrollContainer;
+    private LinearLayout messageContainer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
-        // Ánh xạ view từ layout activity_chat.xml
+
+        // Ánh xạ view
         inputMessage = findViewById(R.id.inputMessage);
         sendButton   = findViewById(R.id.sendButton);
-        chatResult   = findViewById(R.id.chatResult);
         scrollContainer = findViewById(R.id.scroll_container);
+        messageContainer = findViewById(R.id.message_container);
+
         // Bắt sự kiện khi nhấn icon gửi
         sendButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -48,11 +53,11 @@ public class ChatActivity extends AppCompatActivity {
                 processSend();
             }
         });
+
         // Bắt phím “Send” (actionSend) trên bàn phím
         inputMessage.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                // Khi người dùng ấn nút “Gửi” trên bàn phím (IME_ACTION_SEND)
                 if (actionId == EditorInfo.IME_ACTION_SEND) {
                     processSend();
                     return true;
@@ -63,40 +68,34 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     /**
-     * Hàm xử lý khi người dùng nhấn gửi (icon mũi tên) hoặc nhấn Send trên bàn phím.
+     * Xử lý khi user nhấn gửi:
+     * 1) Thêm bubble user
+     * 2) Ẩn bàn phím, xóa ô nhập
+     * 3) Thêm bubble loading tạm
+     * 4) Gọi API, sau khi có kết quả sẽ thêm bubble bot
      */
     private void processSend() {
         String userText = inputMessage.getText().toString().trim();
         if (TextUtils.isEmpty(userText)) {
-            // Nếu ô nhập rỗng, hiển thị thông báo tạm thời
-            chatResult.append("\n\nBot: Hãy nhập tên thành phố hoặc câu hỏi.");
-            scrollToBottom();
             return;
         }
 
-        // 1) Hiển thị nội dung do người dùng gửi lên
-        chatResult.append("\n\nBạn: " + userText);
-        scrollToBottom();
+        // 1) Thêm bubble user
+        addUserBubble(userText);
 
-        // 2) Ẩn bàn phím sau khi nhấn gửi
+        // 2) Ẩn bàn phím rồi xóa nội dung ô nhập
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null) {
             imm.hideSoftInputFromWindow(inputMessage.getWindowToken(), 0);
         }
-
-        // 3) Xóa ô nhập để người dùng có thể gõ tiếp
         inputMessage.setText("");
 
-        // 4) Chuyển về lowercase để dễ check
+        // 3) Phân tích câu hỏi
         String lower = userText.toLowerCase();
-
-        // 5) Kiểm tra ngày: nếu có "ngày mai" hoặc "tomorrow" hoặc "mai" → askTomorrow = true
         boolean askTomorrow = false;
         if (lower.contains("ngày mai") || lower.contains("tomorrow") || lower.contains("mai")) {
             askTomorrow = true;
         }
-
-        // 6) Xóa các từ khoá để lấy đúng tên thành phố
         String cityName = lower
                 .replaceAll("thời tiết", "")
                 .replaceAll("hôm nay", "")
@@ -104,36 +103,64 @@ public class ChatActivity extends AppCompatActivity {
                 .replaceAll("ngày mai", "")
                 .replaceAll("tomorrow", "")
                 .trim();
-
-        // Nếu không tách được cityName, báo lỗi
         if (cityName.isEmpty()) {
-            chatResult.append("\nBot: Mình chưa phát hiện tên thành phố. Hãy nhập như “Thời tiết Hà Nội” hoặc “Hanoi today”.");
-            scrollToBottom();
+            addBotBubble("Mình chưa phát hiện tên thành phố. Hãy nhập như “Thời tiết Hà Nội” hoặc “Hanoi today”.");
             return;
         }
 
-        // 7) Hiển thị loading tạm thời
+        // 4) Thêm bubble loading tạm
         if (askTomorrow) {
-            chatResult.append("\nBot: Đang lấy dự báo thời tiết cho ngày mai ở " + cityName + " …");
+            addBotBubble("Đang lấy dự báo thời tiết cho ngày mai ở " + cityName + " …");
         } else {
-            chatResult.append("\nBot: Đang lấy dữ liệu thời tiết hiện tại cho " + cityName + " …");
+            addBotBubble("Đang lấy dữ liệu thời tiết hiện tại cho " + cityName + " …");
         }
-        scrollToBottom();
 
-        // 8) Gọi helper để fetch tọa độ + dữ liệu
+        // 5) Gọi API
         fetchCityCoordsAndThen(cityName, askTomorrow);
     }
 
     /**
-     * Gọi API /weather để lấy tọa độ (coord) của cityName. Sau đó:
-     *  - Nếu askTomorrow == false → gọi fetchCurrentWeather để lấy dữ liệu hiện tại.
-     *  - Nếu askTomorrow == true  → gọi fetchTomorrowForecast để lấy dự báo ngày mai.
-     *
-     * @param cityName    Tên thành phố (đã trim, lowercase)
-     * @param askTomorrow True nếu user muốn forecast ngày mai, false nếu chỉ xem hiện tại
+     * Thêm một bubble của user vào messageContainer.
+     */
+    private void addUserBubble(String message) {
+        View bubbleView = LayoutInflater.from(this)
+                .inflate(R.layout.item_user_message, messageContainer, false);
+        TextView tv = bubbleView.findViewById(R.id.textUserMessage);
+        tv.setText(message);
+        messageContainer.addView(bubbleView);
+        scrollToBottom();
+    }
+
+    /**
+     * Thêm một bubble của bot vào messageContainer.
+     */
+    private void addBotBubble(String message) {
+        View bubbleView = LayoutInflater.from(this)
+                .inflate(R.layout.item_bot_message, messageContainer, false);
+        TextView tv = bubbleView.findViewById(R.id.textBotMessage);
+        tv.setText(message);
+        messageContainer.addView(bubbleView);
+        scrollToBottom();
+    }
+
+    /**
+     * Cuộn ScrollView xuống dưới để hiển thị bubble mới nhất.
+     */
+    private void scrollToBottom() {
+        scrollContainer.post(new Runnable() {
+            @Override
+            public void run() {
+                scrollContainer.fullScroll(ScrollView.FOCUS_DOWN);
+            }
+        });
+    }
+
+    /**
+     * Gọi API /weather để lấy tọa độ, sau đó:
+     * - Nếu askTomorrow == false: gọi fetchCurrentWeather
+     * - Nếu askTomorrow == true: gọi fetchTomorrowForecast
      */
     private void fetchCityCoordsAndThen(String cityName, boolean askTomorrow) {
-        // Mã hóa tên thành phố (UTF-8) để đưa vào URL
         String encodedCity;
         try {
             encodedCity = URLEncoder.encode(cityName, "UTF-8");
@@ -142,7 +169,6 @@ public class ChatActivity extends AppCompatActivity {
             encodedCity = cityName.replace(" ", "%20");
         }
 
-        // Tạo URL gọi API current weather
         String url = "https://api.openweathermap.org/data/2.5/weather?q="
                 + encodedCity
                 + "&appid=" + WeatherFetcher.API_KEY
@@ -155,37 +181,26 @@ public class ChatActivity extends AppCompatActivity {
                     public void onResponse(String response) {
                         try {
                             JSONObject json = new JSONObject(response);
-
-                            // Lấy coord (lat, lon)
                             JSONObject coord = json.getJSONObject("coord");
                             double lat = coord.getDouble("lat");
                             double lon = coord.getDouble("lon");
 
                             if (!askTomorrow) {
-                                // Nếu user chỉ hỏi hiện tại → gọi fetchCurrentWeather
                                 WeatherFetcher.fetchCurrentWeather(
                                         ChatActivity.this,
                                         cityName,
                                         new WeatherFetcher.WeatherCallback() {
                                             @Override
                                             public void onSuccess(String reply) {
-                                                runOnUiThread(() -> {
-                                                    // Thêm dòng Bot: reply vào chatResult
-                                                    chatResult.append("\nBot: " + reply);
-                                                    scrollToBottom();
-                                                });
+                                                runOnUiThread(() -> addBotBubble(reply));
                                             }
                                             @Override
                                             public void onFailure(String errorMsg) {
-                                                runOnUiThread(() -> {
-                                                    chatResult.append("\nBot: " + errorMsg);
-                                                    scrollToBottom();
-                                                });
+                                                runOnUiThread(() -> addBotBubble(errorMsg));
                                             }
                                         }
                                 );
                             } else {
-                                // Nếu user hỏi ngày mai → gọi fetchTomorrowForecast
                                 WeatherFetcher.fetchTomorrowForecast(
                                         ChatActivity.this,
                                         lat,
@@ -193,53 +208,29 @@ public class ChatActivity extends AppCompatActivity {
                                         new WeatherFetcher.WeatherCallback() {
                                             @Override
                                             public void onSuccess(String reply) {
-                                                runOnUiThread(() -> {
-                                                    chatResult.append("\nBot: " + reply);
-                                                    scrollToBottom();
-                                                });
+                                                runOnUiThread(() -> addBotBubble(reply));
                                             }
                                             @Override
                                             public void onFailure(String errorMsg) {
-                                                runOnUiThread(() -> {
-                                                    chatResult.append("\nBot: " + errorMsg);
-                                                    scrollToBottom();
-                                                });
+                                                runOnUiThread(() -> addBotBubble(errorMsg));
                                             }
                                         }
                                 );
                             }
                         } catch (Exception e) {
                             e.printStackTrace();
-                            runOnUiThread(() -> {
-                                chatResult.append("\nBot: Lỗi phân tích tọa độ thành phố.");
-                                scrollToBottom();
-                            });
+                            runOnUiThread(() -> addBotBubble("Lỗi phân tích tọa độ thành phố."));
                         }
                     }
                 },
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        runOnUiThread(() -> {
-                            chatResult.append("\nBot: Không tìm thấy thành phố “" + cityName + "”.");
-                            scrollToBottom();
-                        });
+                        runOnUiThread(() -> addBotBubble("Không tìm thấy thành phố “" + cityName + "”."));
                     }
                 }
         );
 
         queue.add(req);
-    }
-
-    /**
-     * Cuộn ScrollView xuống dưới để hiển thị tin nhắn mới nhất.
-     */
-    private void scrollToBottom() {
-        scrollContainer.post(new Runnable() {
-            @Override
-            public void run() {
-                scrollContainer.fullScroll(ScrollView.FOCUS_DOWN);
-            }
-        });
     }
 }

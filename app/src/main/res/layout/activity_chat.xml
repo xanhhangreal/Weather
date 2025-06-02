@@ -8,49 +8,29 @@
     android:padding="0dp">
 
     <!-- ================================
-         1. Khu vực hiển thị kết quả chat (TextView)
-         Đặt cao lên trên, chiếm hết không gian phía trên ô nhập.
-         Có thể thay thành ScrollView/RecyclerView nếu chat dài.
+         1. ScrollView chứa danh sách các bubble
          ================================= -->
     <ScrollView
         android:id="@+id/scroll_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/input_container"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
-        android:paddingTop="16dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
-        <!--
-        Dùng LinearLayout (vertical) bên trong ScrollView
-        hoặc bạn có thể chỉ cần 1 TextView nếu chỉ hiển thị 1 đoạn text.
-        Ở ví dụ này, mình vẫn dùng 1 TextView đơn giản.
-    -->
+        <!-- LinearLayout để chứa các item_user_message hoặc item_bot_message -->
         <LinearLayout
+            android:id="@+id/message_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/chatResult"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Bot: Xin chào!"
-                android:textColor="#000000"
-                android:textSize="16sp"
-                android:background="#DDFFFFFF"
-                android:padding="12dp"
-                android:layout_marginBottom="8dp"
-                android:scrollbars="vertical"
-                android:overScrollMode="always" />
-
-        </LinearLayout>
+            android:orientation="vertical" />
     </ScrollView>
 
     <!-- ================================
-             2. Container (ô nhập + nút gửi) nằm dính đáy
-             ================================= -->
+         2. Container ô nhập + nút gửi dính đáy
+         ================================= -->
     <LinearLayout
         android:id="@+id/input_container"
         android:layout_width="match_parent"
@@ -78,16 +58,16 @@
             android:imeOptions="actionSend"
             android:inputType="text" />
 
-        <!-- 2.2. Nút gửi (icon mũi tên) -->
+        <!-- 2.2. Nút gửi (icon mũi tên) với màu xanh dương -->
         <ImageButton
             android:id="@+id/sendButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="4dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/bg_button_blue"
             android:contentDescription="Send"
             android:padding="8dp"
             android:src="@drawable/ic_send"
-            app:tint="#2196F3" />
+            app:tint="#FFFFFF" />
     </LinearLayout>
 </RelativeLayout>

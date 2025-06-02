@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Nền màu xanh dương (user) -->
+    <solid android:color="#2196F3" />
+    <!-- Bo góc: bo tất cả góc 12dp, riêng góc trái bo nhỏ hơn để giống bubble -->
+    <corners
+        android:topLeftRadius="12dp"
+        android:topRightRadius="12dp"
+        android:bottomLeftRadius="12dp"
+        android:bottomRightRadius="0dp" />
+    <padding
+        android:left="10dp"
+        android:top="8dp"
+        android:right="10dp"
+        android:bottom="8dp" />
+</shape>
