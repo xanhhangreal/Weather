@@ -9,7 +9,8 @@
         android:orientation="horizontal"
         android:padding="12dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="#FFF176">
 
         <!-- Icon thời tiết -->
         <ImageView

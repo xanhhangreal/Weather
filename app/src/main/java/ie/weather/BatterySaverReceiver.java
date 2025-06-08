@@ -1,5 +1,6 @@
 package ie.weather;
 
+import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -7,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
 import android.util.Log;
+import android.widget.Toast;
 
 public class BatterySaverReceiver extends BroadcastReceiver {
     private static final String TAG = "BatterySaver";
@@ -20,7 +22,7 @@ public class BatterySaverReceiver extends BroadcastReceiver {
             if (pm == null) return;
 
             boolean isSaverOn = pm.isPowerSaveMode();
-            Log.d(TAG, "🔋 Tiết kiệm pin: " + isSaverOn);
+            Log.d(TAG, " Tiết kiệm pin: " + isSaverOn);
 
             if (isSaverOn) {
                 cancelAlarm(context);
@@ -28,7 +30,7 @@ public class BatterySaverReceiver extends BroadcastReceiver {
                 WeatherReminderReceiver.setAlarmIfNeeded(context);
             }
         } catch (Exception e) {
-            Log.e(TAG, "❌ Lỗi: " + e.getMessage());
+            Log.e(TAG, " Lỗi: " + e.getMessage());
         }
     }
 
@@ -42,7 +44,7 @@ public class BatterySaverReceiver extends BroadcastReceiver {
 
         if (pi != null) {
             am.cancel(pi);
-            Log.d(TAG, "⛔ Đã huỷ alarm");
+            Log.d(TAG, " Đã huỷ alarm");
         }
     }
 }

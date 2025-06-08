@@ -27,12 +27,12 @@ class WeatherWidget : AppWidgetProvider() {
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        Log.d(TAG, "📌 Widget được thêm vào màn hình chính")
+        Log.d(TAG, " Widget được thêm vào màn hình chính")
         setupPeriodicUpdates(context)
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        Log.d(TAG, "🔄 Gọi cập nhật widget thủ công/bởi hệ thống")
+        Log.d(TAG, "Gọi cập nhật widget thủ công/bởi hệ thống")
         for (appWidgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId)
         }
@@ -43,7 +43,7 @@ class WeatherWidget : AppWidgetProvider() {
 
         when (intent.action) {
             ACTION_UPDATE_WIDGET -> {
-                Log.d(TAG, "🔔 Nhận tín hiệu cập nhật từ alarm")
+                Log.d(TAG, " Nhận tín hiệu cập nhật từ alarm")
                 val appWidgetManager = AppWidgetManager.getInstance(context)
                 val appWidgetIds = appWidgetManager.getAppWidgetIds(
                     android.content.ComponentName(context, WeatherWidget::class.java)
@@ -90,7 +90,7 @@ class WeatherWidget : AppWidgetProvider() {
                         System.currentTimeMillis() + UPDATE_INTERVAL,
                         pendingIntent
                     )
-                    Log.d(TAG, "⏰ Đã đặt exact alarm cập nhật sau ${UPDATE_INTERVAL / 60000}p")
+                    Log.d(TAG, "Đã đặt exact alarm cập nhật sau ${UPDATE_INTERVAL / 60000}p")
                 } else {
                     alarmManager.setRepeating(
                         AlarmManager.RTC_WAKEUP,
@@ -98,22 +98,22 @@ class WeatherWidget : AppWidgetProvider() {
                         UPDATE_INTERVAL,
                         pendingIntent
                     )
-                    Log.d(TAG, "⏰ Đã đặt repeating alarm cập nhật mỗi ${UPDATE_INTERVAL / 60000}p")
+                    Log.d(TAG, "Đã đặt repeating alarm cập nhật mỗi ${UPDATE_INTERVAL / 60000}p")
                 }
             } else {
                 // Fallback: sử dụng inexact alarm
-                Log.w(TAG, "⚠️ Không có quyền exact alarm, sử dụng inexact alarm")
+                Log.w(TAG, " Không có quyền exact alarm, sử dụng inexact alarm")
                 alarmManager.setInexactRepeating(
                     AlarmManager.RTC_WAKEUP,
                     System.currentTimeMillis(),
                     UPDATE_INTERVAL,
                     pendingIntent
                 )
-                Log.d(TAG, "⏰ Đã đặt inexact alarm cập nhật khoảng ${UPDATE_INTERVAL / 60000}p")
+                Log.d(TAG, " Đã đặt inexact alarm cập nhật khoảng ${UPDATE_INTERVAL / 60000}p")
             }
 
         } catch (e: SecurityException) {
-            Log.e(TAG, "❌ SecurityException khi đặt alarm: ${e.message}")
+            Log.e(TAG, " SecurityException khi đặt alarm: ${e.message}")
             // Fallback với inexact alarm
             try {
                 alarmManager.setInexactRepeating(
@@ -122,12 +122,12 @@ class WeatherWidget : AppWidgetProvider() {
                     UPDATE_INTERVAL,
                     pendingIntent
                 )
-                Log.d(TAG, "⏰ Fallback: Đã đặt inexact alarm")
+                Log.d(TAG, "Fallback: Đã đặt inexact alarm")
             } catch (e2: Exception) {
-                Log.e(TAG, "❌ Lỗi khi đặt fallback alarm: ${e2.message}")
+                Log.e(TAG, "Lỗi khi đặt fallback alarm: ${e2.message}")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Lỗi tổng quát khi đặt alarm: ${e.message}")
+            Log.e(TAG, " Lỗi tổng quát khi đặt alarm: ${e.message}")
         }
     }
 
@@ -137,7 +137,7 @@ class WeatherWidget : AppWidgetProvider() {
         // Get weather data from SharedPreferences
         val weatherData = getWeatherData(context)
 
-        Log.d(TAG, "🧊 Đang cập nhật UI: ${weatherData.city} - ${weatherData.temp} - icon: ${weatherData.iconCode}")
+        Log.d(TAG, " Đang cập nhật UI: ${weatherData.city} - ${weatherData.temp} - icon: ${weatherData.iconCode}")
 
         // Update text views
         views.setTextViewText(R.id.widget_temp, weatherData.temp)
@@ -199,14 +199,14 @@ class WeatherWidget : AppWidgetProvider() {
                 if (bitmap != null) {
                     views.setImageViewBitmap(R.id.widget_icon, bitmap)
                     appWidgetManager.updateAppWidget(appWidgetId, views)
-                    Log.d(TAG, "✅ Icon loaded successfully")
+                    Log.d(TAG, " Icon loaded successfully")
                 } else {
-                    Log.w(TAG, "⚠️ Failed to load icon, using default")
+                    Log.w(TAG, " Failed to load icon, using default")
                     // Set default icon if available
                     // views.setImageViewResource(R.id.widget_icon, R.drawable.default_weather_icon)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Error loading weather icon: ${e.message}")
+                Log.e(TAG, " Error loading weather icon: ${e.message}")
                 // Handle error gracefully - maybe set a default icon
             }
         }
@@ -233,7 +233,7 @@ class WeatherWidget : AppWidgetProvider() {
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        Log.d(TAG, "❌ Widget bị gỡ bỏ - huỷ alarm và coroutines")
+        Log.d(TAG, "Widget bị gỡ bỏ - huỷ alarm và coroutines")
 
         // Cancel alarm
         cancelPeriodicUpdates(context)
@@ -262,7 +262,7 @@ class WeatherWidget : AppWidgetProvider() {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
-            Log.d(TAG, "🚫 Đã huỷ alarm")
+            Log.d(TAG, "Đã huỷ alarm")
         }
     }
 

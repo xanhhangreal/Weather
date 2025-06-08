@@ -40,8 +40,8 @@ public class PlaceSuggester {
         double lat = userLocation.getLatitude();
         double lon = userLocation.getLongitude();
 
-        Log.d("PlaceSuggester", "📍 Gợi ý địa điểm xung quanh: type = " + type);
-        Log.d("PlaceSuggester", "📍 Tọa độ hiện tại: " + lat + ", " + lon);
+        Log.d("PlaceSuggester", "Gợi ý địa điểm xung quanh: type = " + type);
+        Log.d("PlaceSuggester", "Tọa độ hiện tại: " + lat + ", " + lon);
 
         String url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?" +
                 "location=" + lat + "," + lon +
@@ -62,7 +62,7 @@ public class PlaceSuggester {
 
                 JSONArray results = new JSONObject(sb.toString()).getJSONArray("results");
                 int count = Math.min(5, results.length());
-                Log.d("PlaceSuggester", "✅ Lấy được " + count + " địa điểm");
+                Log.d("PlaceSuggester", "Lấy được " + count + " địa điểm");
 
                 ExecutorService executor = Executors.newFixedThreadPool(5);
                 ArrayList<Future<SuggestedPlace>> futures = new ArrayList<>();
@@ -75,7 +75,7 @@ public class PlaceSuggester {
                     double placeLon = location.getDouble("lng");
 
                     String placeInfo = name + " (" + placeLat + ", " + placeLon + ")";
-                    Log.d("PlaceSuggester", "🌍 Gọi thời tiết cho: " + placeInfo);
+                    Log.d("PlaceSuggester", "Gọi thời tiết cho: " + placeInfo);
 
                     futures.add(executor.submit(() -> getWeather(placeLat, placeLon, name)));
                 }
@@ -85,24 +85,24 @@ public class PlaceSuggester {
                         SuggestedPlace sp = future.get(5, TimeUnit.SECONDS);
                         if (sp != null) {
                             suggestions.add(sp);
-                            Log.d("PlaceSuggester", "✅ Địa điểm được chọn: " + sp.name);
+                            Log.d("PlaceSuggester", "Địa điểm được chọn: " + sp.name);
                         }
                     } catch (Exception e) {
-                        Log.e("PlaceSuggester", "⛔ Lỗi hoặc timeout khi lấy thời tiết: " + e.getMessage());
+                        Log.e("PlaceSuggester", "Lỗi hoặc timeout khi lấy thời tiết: " + e.getMessage());
                     }
                 }
 
                 executor.shutdown();
 
             } catch (Exception e) {
-                Log.e("PlaceSuggester", "❌ Lỗi gọi Google Places API: " + e.getMessage());
+                Log.e("PlaceSuggester", " Lỗi gọi Google Places API: " + e.getMessage());
             }
 
-            Log.d("PlaceSuggester", "🎯 Tổng địa điểm đẹp: " + suggestions.size());
+            Log.d("PlaceSuggester", " Tổng địa điểm đẹp: " + suggestions.size());
 
             new Handler(Looper.getMainLooper()).post(() -> {
                 if (suggestions.isEmpty()) {
-                    Log.w("PlaceSuggester", "⚠️ Không tìm thấy địa điểm phù hợp");
+                    Log.w("PlaceSuggester", "️ Không tìm thấy địa điểm phù hợp");
                 }
                 showFragment(suggestions);
             });
@@ -126,13 +126,13 @@ public class PlaceSuggester {
 //            String condition = res.getJSONArray("weather").getJSONObject(0).getString("main");
 //            String icon = res.getJSONArray("weather").getJSONObject(0).getString("icon");
 //
-//            Log.d("PlaceSuggester", "⛅ " + name + ": " + temp + "°C, " + condition);
+//            Log.d("PlaceSuggester", " " + name + ": " + temp + "°C, " + condition);
 //
 //            if (temp >= 20 && temp <= 32 && !condition.toLowerCase().contains("rain")) {
 //                String iconUrl = "https://openweathermap.org/img/wn/" + icon + "@2x.png";
 //                return new SuggestedPlace(name, temp, condition, iconUrl);
 //            } else {
-//                Log.d("PlaceSuggester", "❌ Bỏ qua " + name + " do thời tiết không phù hợp");
+//                Log.d("PlaceSuggester", "Bỏ qua " + name + " do thời tiết không phù hợp");
 //            }
 //
 //        } catch (Exception e) {
@@ -158,7 +158,7 @@ public class PlaceSuggester {
 
             String iconUrl = "https://openweathermap.org/img/wn/" + icon + "@2x.png";
 
-            // ✅ Bỏ điều kiện lọc thời tiết – luôn trả về địa điểm
+            //  Bỏ điều kiện lọc thời tiết – luôn trả về địa điểm
             return new SuggestedPlace(name, temp, condition, iconUrl);
 
         } catch (Exception e) {
@@ -171,7 +171,7 @@ public class PlaceSuggester {
     private void showFragment(ArrayList<SuggestedPlace> suggestions) {
         if (suggestions.isEmpty()) {
             Toast.makeText(context, "Không tìm thấy địa điểm thời tiết đẹp gần bạn!", Toast.LENGTH_SHORT).show();
-            return; // ⛔ Không mở fragment rỗng nữa
+            return; // Không mở fragment rỗng nữa
         }
 
         if (!(context instanceof AppCompatActivity)) return;

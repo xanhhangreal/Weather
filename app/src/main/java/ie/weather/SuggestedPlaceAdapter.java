@@ -33,7 +33,7 @@ public class SuggestedPlaceAdapter extends RecyclerView.Adapter<SuggestedPlaceAd
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         SuggestedPlace place = places.get(position);
         holder.placeName.setText(place.name);
-        holder.weatherInfo.setText(String.format("%.1f°C – %s", place.temperature, place.condition));
+        holder.weatherInfo.setText(String.format("%.2f°C – %s", place.temperature, place.condition));
         Picasso.get().load(place.iconUrl).into(holder.icon);
     }
 

@@ -53,6 +53,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -253,20 +254,15 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         btnSuggest = findViewById(R.id.itemSuggest);
 
         btnSuggest.setOnClickListener(v -> {
-//            String placeType = spinner.getSelectedItem().toString();
-//            getLastLocationAndSuggest(placeType);
-//            ArrayList<SuggestedPlace> mockPlaces = new ArrayList<>();
-//            mockPlaces.add(new SuggestedPlace("Highlands Coffee Nguyễn Trãi", 29.5, "Clear", "https://openweathermap.org/img/wn/01d@2x.png"));
-//            mockPlaces.add(new SuggestedPlace("The Coffee House Vincom", 31.0, "Clouds", "https://openweathermap.org/img/wn/03d@2x.png"));
-//            mockPlaces.add(new SuggestedPlace("Starbucks Keangnam", 28.2, "Sunny", "https://openweathermap.org/img/wn/01d@2x.png"));
-//            mockPlaces.add(new SuggestedPlace("Aha Cafe Trung Kính", 27.4, "Partly Cloudy", "https://openweathermap.org/img/wn/02d@2x.png"));
-//            mockPlaces.add(new SuggestedPlace("Trill Rooftop Cafe", 30.1, "Few Clouds", "https://openweathermap.org/img/wn/02d@2x.png"));
-//
-//            getSupportFragmentManager().beginTransaction()
-//                    .replace(android.R.id.content, PlaceSuggestionFragment.newInstance(mockPlaces))
-//                    .addToBackStack(null)
-//                    .commit();
-            showSuggest();
+            String placeType = spinner.getSelectedItem().toString();
+            getLastLocationAndSuggest(placeType);
+            ArrayList<SuggestedPlace> mockPlaces = new ArrayList<>();
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(android.R.id.content, PlaceSuggestionFragment.newInstance(mockPlaces))
+                    .addToBackStack(null)
+                    .commit();
+            //showSuggest();
         });
         Button btnToggle = findViewById(R.id.btnToggleFeatures);
         LinearLayout layoutFeatures = findViewById(R.id.layoutFeatures);
@@ -318,10 +314,12 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
         // tiết kiẹm pin
         if (isBatterySaverOn()) {
-            Toast.makeText(this, "⚠️ Thiết bị đang bật chế độ tiết kiệm pin.\nMột số tính năng bị tạm dừng.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, " Thiết bị đang bật chế độ tiết kiệm pin.\nMột số tính năng bị tạm dừng.", Toast.LENGTH_LONG).show();
             Log.e("baterry", "Thiết bị đang bật chế độ tiết kiệm pin ");
             // Dừng cập nhật bằng AlarmManager
             cancelWeatherAlarms();
+        } else {
+            Toast.makeText(this, "App hoạt động ở thế độ thường", Toast.LENGTH_LONG).show();
         }
 
         LinearLayout itemMic = findViewById(R.id.itemMic);
@@ -396,104 +394,53 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     }
 
 
-    private void showSuggest() {
-        ArrayList<PlaceWithCoord> fixedPlaces = new ArrayList<>();
-        fixedPlaces.add(new PlaceWithCoord("Highlands Coffee Nguyễn Trãi", 21.0025, 105.8201));
-        fixedPlaces.add(new PlaceWithCoord("The Coffee House Vincom", 21.0160, 105.8463));
-        fixedPlaces.add(new PlaceWithCoord("Starbucks Keangnam", 21.0182, 105.7841));
-        fixedPlaces.add(new PlaceWithCoord("Trill Rooftop Cafe", 21.0042, 105.8120));
-        fixedPlaces.add(new PlaceWithCoord("New York City", 40.7128, -74.0060));
-        fixedPlaces.add(new PlaceWithCoord("Paris", 48.8566, 2.3522));
-        fixedPlaces.add(new PlaceWithCoord("London", 51.5074, -0.1278));
-        fixedPlaces.add(new PlaceWithCoord("Tokyo", 35.6762, 139.6503));
-        fixedPlaces.add(new PlaceWithCoord("San Francisco", 37.7749, -122.4194));
-        fixedPlaces.add(new PlaceWithCoord("Sydney", -33.8688, 151.2093));
-        fixedPlaces.add(new PlaceWithCoord("Dubai", 25.276987, 55.296249));
-        ArrayList<SuggestedPlace> resultList = new ArrayList<>();
 
-        RequestQueue queue = Volley.newRequestQueue(this);
-
-        for (PlaceWithCoord place : fixedPlaces) {
-            String url = "https://api.openweathermap.org/data/2.5/weather?lat=" + place.lat +
-                    "&lon=" + place.lon +
-                    "&appid=" + apiKey +
-                    "&units=metric";
-
-            JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
-                    response -> {
-                        try {
-                            double temp = response.getJSONObject("main").getDouble("temp");
-                            String condition = response.getJSONArray("weather").getJSONObject(0).getString("main");
-                            String icon = response.getJSONArray("weather").getJSONObject(0).getString("icon");
-                            String iconUrl = "https://openweathermap.org/img/wn/" + icon + "@2x.png";
-
-                            resultList.add(new SuggestedPlace(place.name, temp, condition, iconUrl));
-
-                            // 👉 Khi đã lấy đủ dữ liệu thì hiển thị fragment
-                            if (resultList.size() == fixedPlaces.size()) {
-                                runOnUiThread(() -> {
-                                    getSupportFragmentManager().beginTransaction()
-                                            .replace(android.R.id.content, PlaceSuggestionFragment.newInstance(resultList))
-                                            .addToBackStack(null)
-                                            .commit();
-                                });
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    },
-                    error -> Log.e("Weather", "Lỗi API: " + place.name, error)
-            );
-
-            queue.add(request);
-        }
-    }
 
     private void scheduleDailyReminder() {
-        // Thông báo vào lúc 7h sáng.
-//        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-//        Intent intent = new Intent(this, WeatherReminderReceiver.class);
-//        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
-//
-//        // Hẹn lúc 7h sáng ngày kế tiếp
-//        Calendar calendar = Calendar.getInstance();
-//        calendar.set(Calendar.HOUR_OF_DAY, 7);
-//        calendar.set(Calendar.MINUTE, 0);
-//        calendar.set(Calendar.SECOND, 0);
-//
-//        // Nếu giờ đã qua thì hẹn cho ngày hôm sau
-//        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
-//            calendar.add(Calendar.DAY_OF_YEAR, 1);
-//        }
-//
-//        long triggerTime = calendar.getTimeInMillis();
-//
-//        // Android 12+ cần kiểm tra quyền trước
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//            if (!alarmManager.canScheduleExactAlarms()) {
-//                Log.d("Alarm", "Chưa có quyền SCHEDULE_EXACT_ALARM");
-//                return;
-//            }
-//        }
-//
-//        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-//        Log.d("Alarm", "Alarm đã đặt lúc: " + new Date(triggerTime));
+         //Thông báo vào lúc 7h sáng.
         AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(this, WeatherReminderReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
-        long triggerTime = System.currentTimeMillis() + 180 * 1000; // sau 10s
+        // Hẹn lúc 7h sáng ngày kế tiếp
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, 7);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
 
+        // Nếu giờ đã qua thì hẹn cho ngày hôm sau
+        if (calendar.getTimeInMillis() < System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1);
+        }
+
+        long triggerTime = calendar.getTimeInMillis();
+
+        // Android 12+ cần kiểm tra quyền trước
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (!alarmManager.canScheduleExactAlarms()) {
-                Intent i = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
-                startActivity(i);
+                Log.d("Alarm", "Chưa có quyền SCHEDULE_EXACT_ALARM");
                 return;
             }
         }
 
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-        Log.d("Reminder", "🚀 Đặt lần đầu sau 10s tại " + new Date(triggerTime));
+        Log.d("Alarm", "Alarm đã đặt lúc: " + new Date(triggerTime));
+//        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+//        Intent intent = new Intent(this, WeatherReminderReceiver.class);
+//        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+//
+//        long triggerTime = System.currentTimeMillis() + 180 * 1000; // sau 10s
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//            if (!alarmManager.canScheduleExactAlarms()) {
+//                Intent i = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+//                startActivity(i);
+//                return;
+//            }
+//        }
+//
+//        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+//        Log.d("Reminder", "🚀 Đặt lần đầu sau 10s tại " + new Date(triggerTime));
     }
 
     private void shareWeatherInfo() {
@@ -540,7 +487,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
     private Bitmap createWeatherSnapshot() {
         LayoutInflater inflater = LayoutInflater.from(this);
-        View view = inflater.inflate(R.layout.weather_share_snapshot, null);
+        View view = inflater.inflate(R.layout.weather_share_snapshot,  null);
 
         ImageView bgView = view.findViewById(R.id.snapshot_background);
         ImageView iconView = view.findViewById(R.id.snapshot_icon);
@@ -1046,7 +993,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         PendingIntent notifyPendingIntent = PendingIntent.getBroadcast(this, 1, notifyIntent, PendingIntent.FLAG_IMMUTABLE);
         alarmManager.cancel(notifyPendingIntent);
 
-        Log.d("BatterySaver", "⛔ Đã huỷ tất cả alarm (cập nhật + thông báo)");
+        Log.d("BatterySaver", " Đã huỷ tất cả alarm (cập nhật + thông báo)");
     }
 
     private static final int REQUEST_CODE_SPEECH_INPUT = 100;

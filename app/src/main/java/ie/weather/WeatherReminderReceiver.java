@@ -11,6 +11,7 @@ import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.PowerManager;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 
@@ -24,7 +25,7 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
         // Kiểm tra tiết kiệm pin
         PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         if (powerManager != null && powerManager.isPowerSaveMode()) {
-            Log.d("ReminderReceiver", "⚠️ Đang bật tiết kiệm pin - bỏ qua cập nhật widget");
+            Log.d("ReminderReceiver", "Đang bật tiết kiệm pin - bỏ qua cập nhật widget");
             return;
         }
         // 🔹 Lấy dữ liệu thời tiết từ SharedPreferences
@@ -40,13 +41,15 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
         }
 
         // 🔹 Tạo nội dung thông báo theo điều kiện
-        String message = "🌤️ Chúc bạn một ngày tốt lành!";
+        String message = "\uD83C\uDF25\uFE0F Hôm nay trời mây nhẹ, có nắng. Chúc bạn một ngày tốt lành";
         if (condition.toLowerCase().contains("rain")) {
             message = "☔ Hôm nay có mưa. Đừng quên mang ô!";
         } else if (temp < 18) {
             message = "🥶 Trời lạnh đấy. Nhớ mặc ấm nha!";
         } else if (temp > 33) {
             message = "🔥 Nóng thế này nhớ uống nhiều nước nhé!";
+        } else if(condition.toLowerCase().contains("cloud")) {
+            message = "\uD83C\uDF25\uFE0F Hôm nay trời mây nhẹ, có nắng. Chúc bạn một ngày tốt lành";
         }
 
         // 🔹 Tạo thông báo
@@ -70,32 +73,16 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
 
         manager.notify(1002, builder.build());
 
-        // 🔁 Đặt lại báo thức cho ngày hôm sau lúc 7h
-//        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-//        Intent newIntent = new Intent(context, WeatherReminderReceiver.class);
-//        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, newIntent, PendingIntent.FLAG_IMMUTABLE);
-//
-//        Calendar next = Calendar.getInstance();
-//        next.add(Calendar.DAY_OF_YEAR, 1);
-//        next.set(Calendar.HOUR_OF_DAY, 7);
-//        next.set(Calendar.MINUTE, 0);
-//        next.set(Calendar.SECOND, 0);
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//            if (alarmManager.canScheduleExactAlarms()) {
-//                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), pendingIntent);
-//            }
-//        } else {
-//            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), pendingIntent);
-//        }
-//
-//        Log.d("Reminder", "Đã lên lịch lại cho: " + next.getTime());
+        // Đặt lại báo thức cho ngày hôm sau lúc 7h
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         Intent newIntent = new Intent(context, WeatherReminderReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, newIntent, PendingIntent.FLAG_IMMUTABLE);
 
         Calendar next = Calendar.getInstance();
-        next.add(Calendar.SECOND, 10); // 💥 Lặp lại sau 10s
+        next.add(Calendar.DAY_OF_YEAR, 1);
+        next.set(Calendar.HOUR_OF_DAY, 7);
+        next.set(Calendar.MINUTE, 0);
+        next.set(Calendar.SECOND, 0);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (alarmManager.canScheduleExactAlarms()) {
@@ -105,17 +92,33 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), pendingIntent);
         }
 
-        Log.d("Reminder", "⏱️ Lặp lại sau 10s tại: " + next.getTime());
+        Log.d("Reminder", "Đã lên lịch lại cho: " + next.getTime());
+//        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+//        Intent newIntent = new Intent(context, WeatherReminderReceiver.class);
+//        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, newIntent, PendingIntent.FLAG_IMMUTABLE);
+//
+//        Calendar next = Calendar.getInstance();
+//        next.add(Calendar.SECOND, 10); // 💥 Lặp lại sau 10s
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//            if (alarmManager.canScheduleExactAlarms()) {
+//                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), pendingIntent);
+//            }
+//        } else {
+//            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.getTimeInMillis(), pendingIntent);
+//        }
+//
+//        Log.d("Reminder", "⏱️ Lặp lại sau 10s tại: " + next.getTime());
     }
     public static void setAlarmIfNeeded(Context context) {
         if (context == null) {
-            Log.w("ReminderReceiver", "⚠️ Context null, không thể đặt alarm");
+            Log.w("ReminderReceiver", "Context null, không thể đặt alarm");
             return;
         }
 
         PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         if (powerManager != null && powerManager.isPowerSaveMode()) {
-            Log.d("ReminderReceiver", "❌ Tiết kiệm pin đang bật - không đặt alarm");
+            Log.d("ReminderReceiver", "Tiết kiệm pin đang bật - không đặt alarm");
             return;
         }
 
@@ -131,9 +134,9 @@ public class WeatherReminderReceiver extends BroadcastReceiver {
                     interval,
                     pendingIntent
             );
-            Log.d("ReminderReceiver", "✅ Alarm đã được đặt lại");
+            Log.d("ReminderReceiver", "Alarm đã được đặt lại");
         } catch (Exception e) {
-            Log.e("ReminderReceiver", "❌ Lỗi đặt alarm: " + e.getMessage());
+            Log.e("ReminderReceiver", "Lỗi đặt alarm: " + e.getMessage());
         }
     }
 }
