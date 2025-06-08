@@ -1,5 +1,5 @@
 package ie.weather;
-///  Nhận giữ liệu của tập favCityModel chuyển thành view
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +14,10 @@ import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 
+/**
+ * Adapter để hiển thị danh sách các thành phố yêu thích
+ * Nhận dữ liệu từ FavCityModel và chuyển thành view
+ */
 public class FavCityAdapter extends RecyclerView.Adapter<FavCityAdapter.ViewHolder> {
 
     private Context context;
@@ -21,35 +25,87 @@ public class FavCityAdapter extends RecyclerView.Adapter<FavCityAdapter.ViewHold
 
     public FavCityAdapter(Context context, ArrayList<FavCityModel> arr) {
         this.context = context;
-        this.arr = arr;
+        this.arr = arr != null ? arr : new ArrayList<>();
     }
 
     @NonNull
     @Override
-
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.favcity,parent,false);
+        View view = LayoutInflater.from(context).inflate(R.layout.favcity, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        FavCityModel obj = arr.get(position);
+        if (position < 0 || position >= arr.size()) return;
 
+        FavCityModel obj = arr.get(position);
+        if (obj == null) return;
+
+        // Set background image
         holder.imgCardBG.setImageResource(R.drawable.favoritecard);
-        holder.textCity.setText(obj.getCity());
-        holder.textTemperature.setText(obj.getTemperature());
-        Picasso.get().load("https://openweathermap.org/img/w/"+obj.getImgCondition()+".png").into(holder.imgCondition);
-        holder.textCondition.setText(obj.getCondition());
-        holder.textWindSpeed.setText(obj.getWindSpeed()+"Km/h");
+
+        // Set city name
+        holder.textCity.setText(obj.getCity() != null ? obj.getCity() : "Unknown City");
+
+        // Set temperature
+        holder.textTemperature.setText(obj.getTemperature() != null ? obj.getTemperature() : "--°");
+
+        // Load weather condition icon
+        String iconCode = obj.getImgCondition();
+        if (iconCode != null && !iconCode.isEmpty()) {
+            String iconUrl = "https://openweathermap.org/img/w/" + iconCode + ".png";
+            Picasso.get()
+                    .load(iconUrl)
+                    .into(holder.imgCondition);
+        }
+
+        // Set weather condition text
+        holder.textCondition.setText(obj.getCondition() != null ? obj.getCondition() : "Unknown");
+
+        // Set wind speed
+        String windSpeed = obj.getWindSpeed();
+        if (windSpeed != null && !windSpeed.isEmpty()) {
+            holder.textWindSpeed.setText(windSpeed + " Km/h");
+        } else {
+            holder.textWindSpeed.setText("-- Km/h");
+        }
     }
 
     @Override
     public int getItemCount() {
-        return arr.size();
+        return arr != null ? arr.size() : 0;
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder{
+    /**
+     * Update data and refresh the adapter
+     */
+    public void updateData(ArrayList<FavCityModel> newData) {
+        this.arr = newData != null ? newData : new ArrayList<>();
+        notifyDataSetChanged();
+    }
+
+    /**
+     * Add new item to the list
+     */
+    public void addItem(FavCityModel item) {
+        if (item != null) {
+            arr.add(item);
+            notifyItemInserted(arr.size() - 1);
+        }
+    }
+
+    /**
+     * Remove item from the list
+     */
+    public void removeItem(int position) {
+        if (position >= 0 && position < arr.size()) {
+            arr.remove(position);
+            notifyItemRemoved(position);
+        }
+    }
+
+    public class ViewHolder extends RecyclerView.ViewHolder {
         ImageView imgCardBG, imgCondition;
         TextView textCity, textTemperature, textCondition, textWindSpeed;
 

@@ -9,6 +9,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Permission cho exact alarms (Android 12+) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Permission cho alarms (tất cả Android versions) -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -31,11 +36,13 @@
             </intent-filter>
         </activity>
 
-        <receiver android:name=".WeatherWidget" android:exported="false">
+        <receiver
+            android:name=".WeatherWidget"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="ie.weather.UPDATE_WIDGET" />
             </intent-filter>
-
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weather_widget_info" />
@@ -54,7 +61,6 @@
             android:value="AIzaSyD-i0ZFOUsYRlsalHGg8YX2qUBhcicFzF4"/>
         <activity android:name=".WeatherMapActivity" />
         <receiver android:name=".WeatherReminderReceiver" android:exported="true"/>
-        <receiver android:name=".WeatherWidgetUpdater" />
         <activity android:name=".WindyMapActivity" />
         <receiver android:name=".BatterySaverReceiver"
             android:exported="true">

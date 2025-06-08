@@ -1,264 +1,458 @@
 package ie.weather;
+
 import android.content.Context;
 import android.util.Log;
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 /**
- * WeatherFetcher: chứa các hàm lấy dữ liệu thời tiết (current + daily forecast) từ OpenWeatherMap.
+ * WeatherFetcher: Optimized class for fetching weather data from OpenWeatherMap API
+ * Features: Singleton pattern, better error handling, caching, resource management
  */
 public class WeatherFetcher {
-    public static final String API_KEY = "8425462840818e1c815aa16663d1fedb";
 
-    public interface WeatherCallback {
-        void onSuccess(String reply);
-        void onFailure(String errorMsg);
-    }
+    private static final String TAG = "WeatherFetcher";
+    private static final String API_KEY = "8425462840818e1c815aa16663d1fedb"; // Consider moving to BuildConfig
+    private static final String BASE_URL = "https://api.openweathermap.org/data/2.5/";
+    private static final String ONE_CALL_URL = "https://api.openweathermap.org/data/2.5/onecall";
 
-    /**
-     * Lấy dữ liệu thời tiết hiện tại (current) với rất nhiều trường: temp, feels_like, humidity, pressure,
-     * description, wind speed & direction, v.v.
-     *
-     * @param context  Context để tạo RequestQueue
-     * @param cityName Tên thành phố người dùng nhập (có thể chứa dấu)
-     * @param callback Callback nhận kết quả hoặc lỗi
-     */
-    public static void fetchCurrentWeather(Context context, String cityName, WeatherCallback callback) {
-        // Mã hóa tên thành phố vào URL (UTF-8)
-        String encodedCity;
-        try {
-            encodedCity = URLEncoder.encode(cityName, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            // fallback đơn giản: thay khoảng trắng
-            encodedCity = cityName.replace(" ", "%20");
+    // Singleton instance
+    private static WeatherFetcher instance;
+    private RequestQueue requestQueue;
+    private final Context context;
+
+    // Cache for coordinates to avoid repeated geocoding
+    private static class CityCoords {
+        final double lat, lon;
+        final long timestamp;
+
+        CityCoords(double lat, double lon) {
+            this.lat = lat;
+            this.lon = lon;
+            this.timestamp = System.currentTimeMillis();
         }
 
-        String url = "https://api.openweathermap.org/data/2.5/weather?q="
-                + encodedCity
-                + "&appid=" + API_KEY
-                + "&units=metric&lang=vi";
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > TimeUnit.HOURS.toMillis(1);
+        }
+    }
 
-        // Khởi tạo RequestQueue
-        RequestQueue queue = Volley.newRequestQueue(context);
+    private CityCoords lastCityCoords;
+    private String lastCityName;
 
-        StringRequest request = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject json = new JSONObject(response);
+    // Wind directions in Vietnamese
+    private static final String[] WIND_DIRECTIONS = {
+            "bắc", "đông bắc", "đông", "đông nam",
+            "nam", "tây nam", "tây", "tây bắc"
+    };
 
-                            // 1) Tên thành phố (server trả về thường chuẩn theo DB)
-                            String city = json.getString("name");
+    // Date formatters
+    private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
 
-                            // 2) main: temp, feels_like, temp_min, temp_max, pressure, humidity
-                            JSONObject main = json.getJSONObject("main");
-                            double temp = main.getDouble("temp");
-                            double feelsLike = main.getDouble("feels_like");
-                            int humidity = main.getInt("humidity");
-                            int pressure = main.getInt("pressure");
+    static {
+        TIME_FORMAT.setTimeZone(TimeZone.getDefault());
+        DATE_FORMAT.setTimeZone(TimeZone.getDefault());
+    }
 
-                            // 3) weather: mảng, chỉ lấy phần tử đầu (index 0).description
-                            JSONArray weatherArr = json.getJSONArray("weather");
-                            String description = "";
-                            if (weatherArr.length() > 0) {
-                                description = weatherArr.getJSONObject(0).getString("description");
-                            }
+    // Callback interface
+    public interface WeatherCallback {
+        void onSuccess(String result);
+        void onFailure(String errorMessage);
+    }
 
-                            // 4) wind: speed + deg
-                            JSONObject wind = json.getJSONObject("wind");
-                            double windSpeed = wind.getDouble("speed");
-                            int windDeg = wind.getInt("deg");
-                            String windDir = degToDirection(windDeg);
+    // Weather data models
+    public static class CurrentWeather {
+        public final String cityName;
+        public final double temperature;
+        public final double feelsLike;
+        public final int humidity;
+        public final int pressure;
+        public final String description;
+        public final double windSpeed;
+        public final String windDirection;
+        public final String updateTime;
 
-                            // 5) Thời gian bản tin (timestamp) – nếu muốn convert sang HH:mm:ss
-                            long dt = json.getLong("dt"); // thời gian Unix (giây)
-                            String updatedTime = epochToHuman(dt);
+        public CurrentWeather(String cityName, double temperature, double feelsLike,
+                              int humidity, int pressure, String description,
+                              double windSpeed, String windDirection, String updateTime) {
+            this.cityName = cityName;
+            this.temperature = temperature;
+            this.feelsLike = feelsLike;
+            this.humidity = humidity;
+            this.pressure = pressure;
+            this.description = description;
+            this.windSpeed = windSpeed;
+            this.windDirection = windDirection;
+            this.updateTime = updateTime;
+        }
+    }
 
-                            // 6) Kết hợp tất cả vào một chuỗi dài:
-                            // Ví dụ:
-                            // "Thời tiết ở Hà Nội hôm nay có nhiệt độ khoảng 39°C (312.13 K) và cảm giác như 43°C (316.01 K).
-                            // Trời có nhiều mây, với độ ẩm là 34% và áp suất không khí là 995 hPa.
-                            // Tốc độ gió khoảng 4.96 m/s từ hướng tây nam.
-                            // Nếu bạn có kế hoạch ra ngoài, hãy mặc đồ nhẹ và nhớ uống đủ nước để tránh bị nóng."
-                            StringBuilder sb = new StringBuilder();
-                            sb.append("Thời tiết ở ").append(city)
-                                    .append(" hôm nay có nhiệt độ khoảng ")
-                                    .append(String.format("%.1f", temp)).append("°C (")
-                                    .append(String.format("%.2f", temp + 273.15)).append(" K) và cảm giác như ")
-                                    .append(String.format("%.1f", feelsLike)).append("°C (")
-                                    .append(String.format("%.2f", feelsLike + 273.15)).append(" K). ");
+    public static class ForecastWeather {
+        public final String date;
+        public final double dayTemp;
+        public final double minTemp;
+        public final double maxTemp;
+        public final double feelsLike;
+        public final String description;
+        public final int humidity;
+        public final int pressure;
+        public final double windSpeed;
+        public final String windDirection;
 
-                            sb.append("Trời ").append(description)
-                                    .append(", với độ ẩm là ").append(humidity).append("% và áp suất không khí là ")
-                                    .append(pressure).append(" hPa. ");
+        public ForecastWeather(String date, double dayTemp, double minTemp, double maxTemp,
+                               double feelsLike, String description, int humidity, int pressure,
+                               double windSpeed, String windDirection) {
+            this.date = date;
+            this.dayTemp = dayTemp;
+            this.minTemp = minTemp;
+            this.maxTemp = maxTemp;
+            this.feelsLike = feelsLike;
+            this.description = description;
+            this.humidity = humidity;
+            this.pressure = pressure;
+            this.windSpeed = windSpeed;
+            this.windDirection = windDirection;
+        }
+    }
 
-                            sb.append("Tốc độ gió khoảng ").append(String.format("%.2f", windSpeed))
-                                    .append(" m/s từ hướng ").append(windDir).append(". ");
+    // Private constructor for singleton
+    private WeatherFetcher(Context context) {
+        this.context = context.getApplicationContext();
+        this.requestQueue = Volley.newRequestQueue(this.context);
+    }
 
-                            sb.append("\nCập nhật: ").append(updatedTime).append(". ");
+    // Singleton getter
+    public static synchronized WeatherFetcher getInstance(Context context) {
+        if (instance == null) {
+            instance = new WeatherFetcher(context);
+        }
+        return instance;
+    }
 
-                            // Gọi onSuccess với chuỗi kết quả
-                            callback.onSuccess(sb.toString());
+    /**
+     * Fetch current weather data for a city
+     * @param cityName City name (supports Vietnamese characters)
+     * @param callback Callback to handle success/failure
+     */
+    public void fetchCurrentWeather(String cityName, WeatherCallback callback) {
+        if (cityName == null || cityName.trim().isEmpty()) {
+            callback.onFailure("Tên thành phố không được để trống");
+            return;
+        }
 
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            callback.onFailure("Lỗi phân tích dữ liệu thời tiết.");
+        String encodedCity = encodeUrl(cityName.trim());
+        String url = BASE_URL + "weather?q=" + encodedCity +
+                "&appid=" + API_KEY + "&units=metric&lang=vi";
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+                response -> {
+                    try {
+                        CurrentWeather weather = parseCurrentWeather(response);
+
+                        // Cache coordinates for future forecast requests
+                        if (response.has("coord")) {
+                            JSONObject coord = response.getJSONObject("coord");
+                            lastCityCoords = new CityCoords(coord.getDouble("lat"), coord.getDouble("lon"));
+                            lastCityName = cityName;
                         }
+
+                        callback.onSuccess(formatCurrentWeather(weather));
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error parsing current weather data", e);
+                        callback.onFailure("Lỗi phân tích dữ liệu thời tiết");
                     }
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        // Khi server trả về lỗi (404 nếu thành phố không tồn tại, v.v.)
-                        callback.onFailure("Không thể lấy dữ liệu thời tiết. Vui lòng thử lại.");
-                    }
-                }
-        );
+                error -> handleVolleyError(error, callback));
 
-        queue.add(request);
+        // Set retry policy
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                10000, // 10 seconds timeout
+                2,     // 2 retries
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        requestQueue.add(request);
     }
 
     /**
-     * Lấy dự báo ngày mai (tomorrow) dựa trên lat/lon.
-     * Đây sẽ gọi API One Call (daily forecast) để lấy thông tin của [1] (ngày mai).
-     *
-     * @param context Context để tạo RequestQueue
-     * @param lat     Vĩ độ thành phố
-     * @param lon     Kinh độ thành phố
-     * @param callback Callback nhận chuỗi mô tả forecast ngày mai
+     * Fetch tomorrow's weather forecast
+     * @param cityName City name (will use cached coordinates if available)
+     * @param callback Callback to handle success/failure
      */
-    public static void fetchTomorrowForecast(Context context, double lat, double lon, WeatherCallback callback) {
-        // One Call: lấy daily forecast (0 = hôm nay, 1 = ngày mai, …)
-        String url = "https://api.openweathermap.org/data/2.5/onecall?lat="
-                + lat + "&lon=" + lon
-                + "&exclude=current,minutely,hourly,alerts"
-                + "&units=metric&lang=vi&appid=" + API_KEY;
+    public void fetchTomorrowForecast(String cityName, WeatherCallback callback) {
+        // Use cached coordinates if available and not expired
+        if (lastCityCoords != null && !lastCityCoords.isExpired() &&
+                cityName.equals(lastCityName)) {
+            fetchForecastByCoords(lastCityCoords.lat, lastCityCoords.lon, callback);
+            return;
+        }
 
-        RequestQueue queue = Volley.newRequestQueue(context);
+        // First get coordinates, then fetch forecast
+        fetchCoordinates(cityName, new WeatherCallback() {
+            @Override
+            public void onSuccess(String result) {
+                String[] coords = result.split(",");
+                double lat = Double.parseDouble(coords[0]);
+                double lon = Double.parseDouble(coords[1]);
+                fetchForecastByCoords(lat, lon, callback);
+            }
 
-        StringRequest request = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject json = new JSONObject(response);
-                            JSONArray dailyArr = json.getJSONArray("daily");
+            @Override
+            public void onFailure(String errorMessage) {
+                callback.onFailure(errorMessage);
+            }
+        });
+    }
 
-                            if (dailyArr.length() < 2) {
-                                callback.onFailure("Không có dữ liệu dự báo cho ngày mai.");
-                                return;
-                            }
+    /**
+     * Fetch coordinates for a city name
+     */
+    private void fetchCoordinates(String cityName, WeatherCallback callback) {
+        String encodedCity = encodeUrl(cityName.trim());
+        String url = BASE_URL + "weather?q=" + encodedCity + "&appid=" + API_KEY;
 
-                            JSONObject tomorrow = dailyArr.getJSONObject(1); // index 1 = ngày mai
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+                response -> {
+                    try {
+                        JSONObject coord = response.getJSONObject("coord");
+                        double lat = coord.getDouble("lat");
+                        double lon = coord.getDouble("lon");
 
-                            // Lấy ngày (dt), temp: day, min, max, feels_like
-                            long dt = tomorrow.getLong("dt");
-                            String date = epochToShortDate(dt); // vd. “2023-07-31”
+                        // Cache coordinates
+                        lastCityCoords = new CityCoords(lat, lon);
+                        lastCityName = cityName;
 
-                            JSONObject tempObj = tomorrow.getJSONObject("temp");
-                            double tempDay = tempObj.getDouble("day");
-                            double tempMin = tempObj.getDouble("min");
-                            double tempMax = tempObj.getDouble("max");
-
-                            JSONObject feelsLikeObj = tomorrow.getJSONObject("feels_like");
-                            double feelsDay = feelsLikeObj.getDouble("day");
-
-                            // weather[0].description
-                            JSONArray weatherArr = tomorrow.getJSONArray("weather");
-                            String description = "";
-                            if (weatherArr.length() > 0) {
-                                description = weatherArr.getJSONObject(0).getString("description");
-                            }
-
-                            // độ ẩm + áp suất
-                            int humidity = tomorrow.getInt("humidity");
-                            int pressure = tomorrow.getInt("pressure");
-
-                            // gió: speed + deg
-                            double windSpeed = tomorrow.getDouble("wind_speed");
-                            int windDeg = tomorrow.getInt("wind_deg");
-                            String windDir = degToDirection(windDeg);
-
-                            // Kết hợp thành chuỗi dài:
-                            StringBuilder sb = new StringBuilder();
-                            sb.append("Thời tiết ở ").append(date).append(" sẽ có nhiệt độ khoảng ")
-                                    .append(String.format("%.1f", tempDay)).append("°C (")
-                                    .append(String.format("%.2f", tempDay + 273.15)).append(" K) trong suốt cả ngày, ")
-                                    .append("với nhiệt độ cao nhất lên tới ")
-                                    .append(String.format("%.2f", tempMax)).append("°C (")
-                                    .append(String.format("%.2f", tempMax + 273.15)).append(" K) ")
-                                    .append("và thấp nhất là ")
-                                    .append(String.format("%.2f", tempMin)).append("°C (")
-                                    .append(String.format("%.2f", tempMin + 273.15)).append(" K). ");
-
-                            sb.append("Cảm giác như khoảng ")
-                                    .append(String.format("%.2f", feelsDay)).append("°C (")
-                                    .append(String.format("%.2f", feelsDay + 273.15)).append(" K) vào ban ngày. ");
-
-                            sb.append("Trời sẽ ").append(description)
-                                    .append(", độ ẩm ").append(humidity).append("% và áp suất không khí là ")
-                                    .append(pressure).append(" hPa. ");
-
-                            sb.append("Tốc độ gió khoảng ")
-                                    .append(String.format("%.2f", windSpeed)).append(" m/s từ hướng ")
-                                    .append(windDir).append(". ");
-
-                            // Lời khuyên/ngắn gọn
-                            sb.append("\nHãy mặc đồ nhẹ và uống đủ nước khi ra ngoài nhé!");
-
-                            callback.onSuccess(sb.toString());
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            callback.onFailure("Lỗi phân tích dữ liệu forecast.");
-                        }
+                        callback.onSuccess(lat + "," + lon);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error parsing coordinates", e);
+                        callback.onFailure("Không thể lấy tọa độ thành phố");
                     }
                 },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        callback.onFailure("Không thể lấy dữ liệu forecast.");
+                error -> handleVolleyError(error, callback));
+
+        request.setRetryPolicy(new DefaultRetryPolicy(5000, 1, 1.0f));
+        requestQueue.add(request);
+    }
+
+    /**
+     * Fetch forecast using coordinates
+     */
+    private void fetchForecastByCoords(double lat, double lon, WeatherCallback callback) {
+        String url = ONE_CALL_URL + "?lat=" + lat + "&lon=" + lon +
+                "&exclude=current,minutely,hourly,alerts" +
+                "&units=metric&lang=vi&appid=" + API_KEY;
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+                response -> {
+                    try {
+                        JSONArray dailyArray = response.getJSONArray("daily");
+                        if (dailyArray.length() < 2) {
+                            callback.onFailure("Không có dữ liệu dự báo cho ngày mai");
+                            return;
+                        }
+
+                        ForecastWeather forecast = parseForecastWeather(dailyArray.getJSONObject(1));
+                        callback.onSuccess(formatForecastWeather(forecast));
+
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error parsing forecast data", e);
+                        callback.onFailure("Lỗi phân tích dữ liệu dự báo");
                     }
-                }
-        );
+                },
+                error -> handleVolleyError(error, callback));
 
-        queue.add(request);
+        request.setRetryPolicy(new DefaultRetryPolicy(10000, 2, 1.0f));
+        requestQueue.add(request);
     }
 
     /**
-     * Chuyển độ (0-360) thành chuỗi hướng gió (N, NE, E, SE, S, SW, W, NW).
+     * Parse current weather JSON response
      */
-    private static String degToDirection(int deg) {
-        String[] dirs = { "bắc", "đông bắc", "đông", "đông nam", "nam", "tây nam", "tây", "tây bắc" };
-        int idx = Math.round(deg / 45f) % 8;
-        return dirs[idx];
+    private CurrentWeather parseCurrentWeather(JSONObject json) throws JSONException {
+        String cityName = json.getString("name");
+
+        JSONObject main = json.getJSONObject("main");
+        double temperature = main.getDouble("temp");
+        double feelsLike = main.getDouble("feels_like");
+        int humidity = main.getInt("humidity");
+        int pressure = main.getInt("pressure");
+
+        String description = "";
+        JSONArray weatherArray = json.getJSONArray("weather");
+        if (weatherArray.length() > 0) {
+            description = weatherArray.getJSONObject(0).getString("description");
+        }
+
+        JSONObject wind = json.getJSONObject("wind");
+        double windSpeed = wind.getDouble("speed");
+        int windDeg = wind.optInt("deg", 0);
+        String windDirection = degreeToDirection(windDeg);
+
+        long timestamp = json.getLong("dt");
+        String updateTime = formatTime(timestamp);
+
+        return new CurrentWeather(cityName, temperature, feelsLike, humidity,
+                pressure, description, windSpeed, windDirection, updateTime);
     }
 
     /**
-     * Chuyển epoch (giây) sang HH:mm:ss (theo local timezone).
+     * Parse forecast weather JSON response
      */
-    private static String epochToHuman(long epochSeconds) {
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault());
-        sdf.setTimeZone(java.util.TimeZone.getDefault());
-        return sdf.format(new java.util.Date(epochSeconds * 1000L));
+    private ForecastWeather parseForecastWeather(JSONObject json) throws JSONException {
+        long timestamp = json.getLong("dt");
+        String date = formatDate(timestamp);
+
+        JSONObject temp = json.getJSONObject("temp");
+        double dayTemp = temp.getDouble("day");
+        double minTemp = temp.getDouble("min");
+        double maxTemp = temp.getDouble("max");
+
+        JSONObject feelsLike = json.getJSONObject("feels_like");
+        double feelsLikeDay = feelsLike.getDouble("day");
+
+        String description = "";
+        JSONArray weatherArray = json.getJSONArray("weather");
+        if (weatherArray.length() > 0) {
+            description = weatherArray.getJSONObject(0).getString("description");
+        }
+
+        int humidity = json.getInt("humidity");
+        int pressure = json.getInt("pressure");
+        double windSpeed = json.getDouble("wind_speed");
+        int windDeg = json.optInt("wind_deg", 0);
+        String windDirection = degreeToDirection(windDeg);
+
+        return new ForecastWeather(date, dayTemp, minTemp, maxTemp, feelsLikeDay,
+                description, humidity, pressure, windSpeed, windDirection);
     }
 
     /**
-     * Chuyển epoch (giây) sang yyyy-MM-dd.
+     * Format current weather data into readable Vietnamese text
      */
-    private static String epochToShortDate(long epochSeconds) {
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
-        sdf.setTimeZone(java.util.TimeZone.getDefault());
-        return sdf.format(new java.util.Date(epochSeconds * 1000L));
+    private String formatCurrentWeather(CurrentWeather weather) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Thời tiết ở ").append(weather.cityName)
+                .append(" hôm nay có nhiệt độ ").append(String.format("%.1f", weather.temperature))
+                .append("°C và cảm giác như ").append(String.format("%.1f", weather.feelsLike)).append("°C. ");
+
+        sb.append("Trời ").append(weather.description)
+                .append(", độ ẩm ").append(weather.humidity)
+                .append("% và áp suất ").append(weather.pressure).append(" hPa. ");
+
+        sb.append("Gió ").append(String.format("%.1f", weather.windSpeed))
+                .append(" m/s hướng ").append(weather.windDirection).append(". ");
+
+        sb.append("\nCập nhật lúc ").append(weather.updateTime);
+
+        return sb.toString();
+    }
+
+    /**
+     * Format forecast weather data into readable Vietnamese text
+     */
+    private String formatForecastWeather(ForecastWeather forecast) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Dự báo thời tiết ngày mai (").append(forecast.date).append("): ");
+        sb.append("Nhiệt độ ").append(String.format("%.1f", forecast.dayTemp))
+                .append("°C (").append(String.format("%.1f", forecast.minTemp))
+                .append("°C - ").append(String.format("%.1f", forecast.maxTemp)).append("°C), ");
+
+        sb.append("cảm giác như ").append(String.format("%.1f", forecast.feelsLike)).append("°C. ");
+
+        sb.append("Trời ").append(forecast.description)
+                .append(", độ ẩm ").append(forecast.humidity)
+                .append("%, áp suất ").append(forecast.pressure).append(" hPa. ");
+
+        sb.append("Gió ").append(String.format("%.1f", forecast.windSpeed))
+                .append(" m/s hướng ").append(forecast.windDirection).append(".");
+
+        return sb.toString();
+    }
+
+    /**
+     * Convert wind degree to Vietnamese direction
+     */
+    private String degreeToDirection(int degree) {
+        int index = Math.round(degree / 45f) % 8;
+        return WIND_DIRECTIONS[index];
+    }
+
+    /**
+     * Format timestamp to time string
+     */
+    private String formatTime(long epochSeconds) {
+        return TIME_FORMAT.format(new Date(epochSeconds * 1000L));
+    }
+
+    /**
+     * Format timestamp to date string
+     */
+    private String formatDate(long epochSeconds) {
+        return DATE_FORMAT.format(new Date(epochSeconds * 1000L));
+    }
+
+    /**
+     * URL encode with UTF-8
+     */
+    private String encodeUrl(String input) {
+        try {
+            return URLEncoder.encode(input, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            Log.w(TAG, "UTF-8 encoding not supported, using fallback", e);
+            return input.replace(" ", "%20");
+        }
+    }
+
+    /**
+     * Handle Volley errors with appropriate Vietnamese messages
+     */
+    private void handleVolleyError(VolleyError error, WeatherCallback callback) {
+        String errorMessage;
+
+        if (error.networkResponse != null) {
+            int statusCode = error.networkResponse.statusCode;
+            switch (statusCode) {
+                case 404:
+                    errorMessage = "Không tìm thấy thành phố. Vui lòng kiểm tra tên thành phố.";
+                    break;
+                case 401:
+                    errorMessage = "Lỗi xác thực API. Vui lòng thử lại sau.";
+                    break;
+                case 429:
+                    errorMessage = "Quá nhiều yêu cầu. Vui lòng thử lại sau.";
+                    break;
+                default:
+                    errorMessage = "Lỗi server (" + statusCode + "). Vui lòng thử lại.";
+            }
+        } else {
+            errorMessage = "Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet.";
+        }
+
+        Log.e(TAG, "Volley error: " + error.getMessage(), error);
+        callback.onFailure(errorMessage);
+    }
+
+    /**
+     * Clean up resources
+     */
+    public void cleanup() {
+        if (requestQueue != null) {
+            requestQueue.cancelAll(TAG);
+        }
     }
 }
