@@ -7,6 +7,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import org.json.JSONArray;
@@ -29,7 +30,8 @@ public class WeatherFetcher {
     private static final String TAG = "WeatherFetcher";
     private static final String API_KEY = "8425462840818e1c815aa16663d1fedb"; // Consider moving to BuildConfig
     private static final String BASE_URL = "https://api.openweathermap.org/data/2.5/";
-    private static final String ONE_CALL_URL = "https://api.openweathermap.org/data/2.5/onecall";
+    private static final String GEO_URL      = "https://api.openweathermap.org/geo/1.0/direct";
+    private static final String ONE_CALL_URL = "https://api.openweathermap.org/data/3.0/onecall";
 
     // Singleton instance
     private static WeatherFetcher instance;
@@ -155,37 +157,34 @@ public class WeatherFetcher {
             callback.onFailure("Tên thành phố không được để trống");
             return;
         }
-
-        String encodedCity = encodeUrl(cityName.trim());
-        String url = BASE_URL + "weather?q=" + encodedCity +
-                "&appid=" + API_KEY + "&units=metric&lang=vi";
+        String encodedCity;
+        try {
+            encodedCity = URLEncoder.encode(cityName.trim(), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            callback.onFailure("Lỗi mã hóa tên thành phố");
+            return;
+        }
+        String url = BASE_URL + "weather?q=" + encodedCity
+                + "&appid=" + API_KEY
+                + "&units=metric&lang=vi";
 
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
                 response -> {
                     try {
                         CurrentWeather weather = parseCurrentWeather(response);
-
-                        // Cache coordinates for future forecast requests
                         if (response.has("coord")) {
-                            JSONObject coord = response.getJSONObject("coord");
-                            lastCityCoords = new CityCoords(coord.getDouble("lat"), coord.getDouble("lon"));
+                            JSONObject c = response.getJSONObject("coord");
+                            lastCityCoords = new CityCoords(c.getDouble("lat"), c.getDouble("lon"));
                             lastCityName = cityName;
                         }
-
                         callback.onSuccess(formatCurrentWeather(weather));
-                    } catch (JSONException e) {
-                        Log.e(TAG, "Error parsing current weather data", e);
+                    } catch (JSONException ex) {
+                        Log.e(TAG, "Error parsing current weather", ex);
                         callback.onFailure("Lỗi phân tích dữ liệu thời tiết");
                     }
                 },
                 error -> handleVolleyError(error, callback));
-
-        // Set retry policy
-        request.setRetryPolicy(new DefaultRetryPolicy(
-                10000, // 10 seconds timeout
-                2,     // 2 retries
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-
+        request.setRetryPolicy(new DefaultRetryPolicy(10000, 2, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         requestQueue.add(request);
     }
 
@@ -195,28 +194,47 @@ public class WeatherFetcher {
      * @param callback Callback to handle success/failure
      */
     public void fetchTomorrowForecast(String cityName, WeatherCallback callback) {
-        // Use cached coordinates if available and not expired
-        if (lastCityCoords != null && !lastCityCoords.isExpired() &&
-                cityName.equals(lastCityName)) {
+        if (cityName == null || cityName.trim().isEmpty()) {
+            callback.onFailure("Tên thành phố không được để trống");
+            return;
+        }
+        // Use cache if still valid
+        if (lastCityCoords != null && !lastCityCoords.isExpired()
+                && cityName.equals(lastCityName)) {
             fetchForecastByCoords(lastCityCoords.lat, lastCityCoords.lon, callback);
             return;
         }
-
-        // First get coordinates, then fetch forecast
-        fetchCoordinates(cityName, new WeatherCallback() {
-            @Override
-            public void onSuccess(String result) {
-                String[] coords = result.split(",");
-                double lat = Double.parseDouble(coords[0]);
-                double lon = Double.parseDouble(coords[1]);
-                fetchForecastByCoords(lat, lon, callback);
-            }
-
-            @Override
-            public void onFailure(String errorMessage) {
-                callback.onFailure(errorMessage);
-            }
-        });
+        // 1) Geocoding request to get lat/lon
+        String encodedCity;
+        try {
+            encodedCity = URLEncoder.encode(cityName.trim(), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            callback.onFailure("Lỗi mã hóa tên thành phố");
+            return;
+        }
+        String geoUrl = GEO_URL + "?q=" + encodedCity + "&limit=1&appid=" + API_KEY;
+        JsonArrayRequest geoRequest = new JsonArrayRequest(Request.Method.GET, geoUrl, null,
+                array -> {
+                    try {
+                        if (array.length() == 0) {
+                            callback.onFailure("Không tìm thấy thành phố. Vui lòng kiểm tra tên thành phố.");
+                            return;
+                        }
+                        JSONObject loc = array.getJSONObject(0);
+                        double lat = loc.getDouble("lat");
+                        double lon = loc.getDouble("lon");
+                        lastCityCoords = new CityCoords(lat, lon);
+                        lastCityName = cityName;
+                        // 2) Fetch forecast via One Call API
+                        fetchForecastByCoords(lat, lon, callback);
+                    } catch (JSONException ex) {
+                        Log.e(TAG, "Error parsing geocoding data", ex);
+                        callback.onFailure("Lỗi phân tích dữ liệu tọa độ");
+                    }
+                },
+                error -> handleVolleyError(error, callback));
+        geoRequest.setRetryPolicy(new DefaultRetryPolicy(5000, 1, 1.0f));
+        requestQueue.add(geoRequest);
     }
 
     /**
