@@ -42,11 +42,9 @@ git clone https://github.com/xanhhangreal/Weather.git
 
 ## 4. Screenshot
 
-| Giao diện chính | Dự báo giờ | Chatbot |
+| Giao diện chính | Địa điểm ở gần | Chatbot |
 |----------------|------------|---------|
-| ![Main](screenshots/main.png) | ![Hourly](screenshots/hourly.png) | ![Chatbot](screenshots/chatbot.png) |
-
-> *Nếu chưa có ảnh, bạn có thể thêm thư mục `screenshots/` chứa ảnh minh họa để README hiển thị đẹp hơn.*
+| ![Main](screenshots/main.png) | ![Place](screenshots/place.png) | ![Chatbot](screenshots/chatbot.png) |
 
 ---
 
